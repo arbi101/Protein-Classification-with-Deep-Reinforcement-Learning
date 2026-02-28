@@ -1,0 +1,16 @@
+<h1>Protein GO Terms Prediction</h1>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Predict GO Terms</button>
+</form>
+
+{% if go_terms %}
+    <h2>Predicted GO Terms:</h2>
+    <ul>
+    {% for term in go_terms %}
+        <li>{{ term }}</li>
+    {% endfor %}
+    </ul>
+{% endif %}
