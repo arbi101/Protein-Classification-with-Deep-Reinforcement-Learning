@@ -1,0 +1,27 @@
+/* Custom styles for GO predictor */
+
+body {
+    background-color: #f8f9fa;
+}
+
+h1, h2 {
+    color: #343a40;
+}
+
+.form-control, .btn {
+    border-radius: 0.25rem;
+}
+
+.card {
+    margin-top: 1rem;
+    border-radius: 0.75rem;
+}
+
+.go-tag {
+    background-color: #e9ecef;
+    border-radius: 1rem;
+    padding: 0.25rem 0.75rem;
+    margin: 0.25rem;
+    display: inline-block;
+    font-size: 0.875rem;
+}

@@ -1,6 +1,14 @@
 # go_predictor/forms.py
 from django import forms
 
-class FastaForm(forms.Form):
-    name = forms.CharField(label='Protein Name', max_length=200)
-    fasta_sequence = forms.CharField(label='FASTA Sequence', widget=forms.Textarea)
+class ProteinSearchForm(forms.Form):
+    fasta_sequence = forms.CharField(
+        label='Protein Sequence in FASTA format',
+        widget=forms.Textarea(attrs={
+            'placeholder': '>ProteinName\nSEQUENCE...',
+            'class': 'form-control mt-2',
+            'rows': 10,
+            'autocomplete': 'off'
+        }),
+        help_text='Enter one or more sequences in FASTA format. Maximum 10 sequences.'
+    )
