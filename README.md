@@ -66,6 +66,13 @@ GO:0003674
 - Validate predictions with real protein sequences and benchmark performance.
 - Optionally store input sequences and predicted GO terms in a database for later analysis.
 
+## Recent Changes
+
+- Translated all Italian comments, docstrings, error messages, and user interface text to English across the entire project.
+- Updated `views.py` with English comments and strings.
+- Modified `forms.py` labels and help text to English.
+- Translated HTML templates (`predict.html` and `structure_2d.html`) to English for consistency.
+
 ## Notes
 
 This is Phase 1 of the full pipeline for protein classification using Deep Reinforcement Learning. Phase 2 will involve HP folding in 2D and reinforcement learning to refine functional predictions.
