@@ -1,122 +1,421 @@
 {% extends "base.html" %}
 {% load static %}
+{% load go_tags %}
 
 {% block title %}GO Terms Search{% endblock %}
 
 {% block content %}
-<div class="text-center mb-5">
-    <h1 class="fw-bold">Protein Function Prediction with DeepGO</h1>
-    <p class="text-muted">Enter a protein sequence in FASTA format to predict Gene Ontology terms</p>
-</div>
-
-<div class="card p-4 mb-4">
-  <form method="post" class="row g-0 align-items-end">
-    {% csrf_token %}
-    <div class="col-12">
-        {{ form.fasta_sequence.label_tag }}
-        <small class="form-text text-muted">{{ form.fasta_sequence.help_text }}</small>
-        {{ form.fasta_sequence }}
-        {% if form.fasta_sequence.errors %}
-            <div class="text-danger small">{{ form.fasta_sequence.errors }}</div>
-        {% endif %}
-    </div>
-    <div class="col-12 text-end mt-3">
-        <button type="submit" name="action" value="predict" class="btn btn-dark me-2">
-            <i class="fas fa-search"></i> Predict GO
-        </button>
-        <button type="submit" name="action" value="structure" class="btn btn-primary">
-            <i class="fas fa-cubes"></i> Generate 2D Structure
-        </button>
-    </div>
-  </form>
-</div>
-
-{% if error_message %}
-    <div class="alert alert-danger" role="alert">
-        {{ error_message }}
-    </div>
-{% endif %}
-
-{% if result %}
-    <div class="card mb-4">
-        <div class="card-body">
-            <h5 class="card-title">{{ result.protein.name }}</h5>
-            <p class="card-text text-muted">{{ result.protein.description }}</p>
-        </div>
-    </div>
-    {% for cat in result.categories %}
-    <div class="card mb-3">
-        <div class="card-body">
-            <h6 class="card-subtitle mb-1 fw-bold">{{ cat.title }}</h6>
-            <small class="text-muted">{{ cat.subtitle }}</small>
-            <div class="mt-2">
-                {% for term in cat.terms %}
-                    <span class="go-tag">{{ term.go }} - {{ term.label }} - {{ term.score|floatformat:3 }}</span>
-                {% endfor %}
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 mb-4">
+            <div class="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <i data-lucide="dna" class="size-8 text-white"></i>
             </div>
         </div>
+        <h1 class="text-4xl font-bold text-slate-900 mb-2">
+            Protein Function Prediction with DeepGO
+        </h1>
+        <p class="text-slate-600 text-lg">
+            Enter a protein sequence in FASTA format to predict Gene Ontology terms
+        </p>
     </div>
-    {% endfor %}
-{% endif %}
 
-{% if structure %}
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Struttura 2D - Modello HP</h5>
-                    <div class="protein-grid">
-                        {% for point in structure %}
+    <!-- Input Section -->
+    <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-semibold flex items-center gap-2">
+                <i data-lucide="sparkles" class="size-5 text-blue-600"></i>
+                Protein Sequence in FASTA format
+            </h3>
+            <p class="text-slate-600 mt-1">
+                Enter one or more sequences in FASTA format. Each sequence will be processed separately.
+            </p>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ form.fasta_sequence.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ form.fasta_sequence.label }}
+                    </label>
+                    <small class="text-slate-500">{{ form.fasta_sequence.help_text }}</small>
+                    <textarea
+                        name="{{ form.fasta_sequence.name }}"
+                        id="{{ form.fasta_sequence.id_for_label }}"
+                        class="w-full font-mono text-sm min-h-[200px] resize-y border border-slate-300 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        placeholder=">ProteinName&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"
+                    >{{ form.fasta_sequence.value|default:">TestProtein1\nMKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
+                    {% if form.fasta_sequence.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="flex gap-3 justify-end">
+                    <button type="submit" name="action" value="predict" class="bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 disabled:opacity-50">
+                        <i data-lucide="zap" class="size-4"></i>
+                        Predict GO
+                    </button>
+                    <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
+                        <i data-lucide="network" class="size-4"></i>
+                        Genera Struttura 2D
+                    </button>
+                    <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
+                        <i data-lucide="box" class="size-4"></i>
+                        Genera Struttura 3D (AlphaFold)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if error_message %}
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+            <div class="flex items-center gap-2">
+                <i data-lucide="alert-circle" class="size-5 text-red-600"></i>
+                <span class="text-red-800">{{ error_message }}</span>
+            </div>
+        </div>
+    {% endif %}
+
+    {% if structures %}
+        {% for struct in structures %}
+        <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8 overflow-hidden">
+            <div class="p-6 bg-gradient-to-r from-slate-50 to-purple-50 border-b border-slate-200">
+                <h3 class="text-xl font-bold flex items-center gap-2 text-slate-800">
+                    <i data-lucide="network" class="size-5 text-purple-600"></i>
+                    2D Structure: {{ struct.name }}
+                </h3>
+            </div>
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Structure Visualization -->
+                <div class="lg:col-span-2 flex flex-col items-center border-r border-slate-100 pr-0 lg:pr-8">
+                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner">
+                        {% for point in struct.structure %}
                             <div class="grid-cell {{ point.type }}" style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};">
                                 {{ point.type }}
                             </div>
                         {% endfor %}
                     </div>
+                    <div class="mt-6 flex items-center gap-6 bg-white px-6 py-3 rounded-full shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
+                            <span class="text-sm font-medium text-slate-700">H - Hydrophobic</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                            <span class="text-sm font-medium text-slate-700">P - Polar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Structure Information -->
+                <div class="space-y-6">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <i data-lucide="align-left" class="size-4 text-slate-400"></i> HP String
+                        </div>
+                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner break-all">
+                            {{ struct.hp_string }}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                            <div class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="zap" class="size-4"></i> Energy
+                            </div>
+                            <div class="text-3xl font-bold text-amber-600">{{ struct.energy }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                            <div class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="hash" class="size-4"></i> Length
+                            </div>
+                            <div class="text-3xl font-bold text-blue-600">{{ struct.structure|length }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h6 class="card-title">Informazioni Struttura</h6>
-                    <p><strong>Stringa HP:</strong> {{ hp_string }}</p>
-                    <p><strong>Energia:</strong> {{ energy }}</p>
-                    <p><strong>Lunghezza:</strong> {{ structure|length }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if results %}
+        {% for result in results %}
+        <!-- Results Section -->
+        <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8">
+            <div class="p-6 bg-gradient-to-r from-slate-50 to-blue-50 border-b">
+                <h2 class="text-2xl font-bold">{{ result.protein.name }}</h2>
+                <p class="text-slate-600 flex items-center gap-2">
+                    <i data-lucide="box" class="size-4"></i>
+                    {{ result.protein.description }}
+                </p>
+            </div>
+            <div class="p-6">
+                <div class="tabs">
+                    <div class="flex justify-center space-x-4 mb-6">
+                        <button class="tab-button active flex items-center gap-2 rounded-full px-6 py-3 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200" data-tab="cellular-{{ forloop.counter }}">
+                            <i data-lucide="box" class="text-slate-700"></i>
+                            <span>Cellular Components</span>
+                        </button>
+                        <button class="tab-button flex items-center gap-2 rounded-full px-6 py-3 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200" data-tab="molecular-{{ forloop.counter }}">
+                            <i data-lucide="sparkles" class="text-slate-700"></i>
+                            <span>Molecular Functions</span>
+                        </button>
+                        <button class="tab-button flex items-center gap-2 rounded-full px-6 py-3 border border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200" data-tab="biological-{{ forloop.counter }}">
+                            <i data-lucide="network" class="text-slate-700"></i>
+                            <span>Biological Processes</span>
+                        </button>
+                    </div>
+
+                    <div class="tab-content active" id="cellular-{{ forloop.counter }}">
+                        <div class="mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i data-lucide="box" class="size-5 text-blue-600"></i>
+                                <h4 class="text-lg font-semibold text-slate-800">Cellular Components</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-4">These are the locations within the cell where the protein performs its functions.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            {% for cat in result.categories %}
+                                {% if cat.title == 'Cellular Components' %}
+                                    {% for term in cat.terms %}
+                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                            <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="molecular-{{ forloop.counter }}">
+                        <div class="mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i data-lucide="sparkles" class="size-5 text-green-600"></i>
+                                <h4 class="text-lg font-semibold text-slate-800">Molecular Functions</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-4">These describe the biochemical activities performed by the protein.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            {% for cat in result.categories %}
+                                {% if cat.title == 'Molecular Functions' %}
+                                    {% for term in cat.terms %}
+                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                            <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="tab-content" id="biological-{{ forloop.counter }}">
+                        <div class="mb-4">
+                            <div class="flex items-center gap-2 mb-2">
+                                <i data-lucide="network" class="size-5 text-purple-600"></i>
+                                <h4 class="text-lg font-semibold text-slate-800">Biological Processes</h4>
+                            </div>
+                            <p class="text-slate-600 text-sm mb-4">These are the broader biological objectives to which the protein contributes.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-3">
+                            {% for cat in result.categories %}
+                                {% if cat.title == 'Biological Processes' %}
+                                    {% for term in cat.terms %}
+                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                            <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
+                                        </span>
+                                    {% endfor %}
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-{% endif %}
+        {% endfor %}
+    {% endif %}
+
+    {% if alphafold_results %}
+        <!-- Include 3Dmol.js Library -->
+        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+        
+        {% for res in alphafold_results %}
+        <!-- AlphaFold Results Section -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 transition-all hover:shadow-2xl mb-8">
+            <div class="border-b border-slate-100 bg-slate-50 p-6 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="box" class="size-6 text-indigo-600"></i>
+                        {{ res.name }}
+                    </h3>
+                </div>
+                <div class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
+                    3D Structure Mapping
+                </div>
+            </div>
+            
+            <div class="p-6">
+                {% if res.pdb_url or res.pdb_data %}
+                    <div class="flex flex-col mb-4">
+                        {% if res.source == 'AlphaFold DB' %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="check-circle" class="size-4 text-green-500"></i> Found in AlphaFold DB (UniProt: {{ res.uniprot_id }})
+                            </span>
+                        {% else %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="server" class="size-4 text-blue-500"></i> Generated via ESMFold API
+                            </span>
+                        {% endif %}
+                        <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
+                    </div>
+                    
+                    <!-- 3Dmol.js Viewer -->
+                    <div class="viewer_3Dmoljs w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
+                         {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-element="pdb_data_{{ forloop.counter }}" data-datatype="pdb"{% endif %}
+                         data-backgroundcolor="0x0f172a" 
+                         data-style="cartoon:color=spectrum">
+                    </div>
+                    {% if not res.pdb_url and res.pdb_data %}
+                    <textarea id="pdb_data_{{ forloop.counter }}" style="display: none;">{{ res.pdb_data }}</textarea>
+                    {% endif %}
+                {% else %}
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                        <i data-lucide="alert-triangle" class="size-8 text-red-500 mx-auto mb-3"></i>
+                        <h4 class="text-lg font-semibold text-red-800 mb-2">3D Structure Generation Failed</h4>
+                        <p class="text-red-600">Could not generate a structure using ESMFold or find a match in AlphaFold DB. Check your sequence formatting.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not results and not structures and not alphafold_results %}
+        <!-- Info Footer -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8">
+            <div class="p-6">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <div class="text-sm text-blue-900">
+                        <p class="font-medium mb-1">Come funziona?</p>
+                        <p>
+                            Inserisci una sequenza proteica in formato FASTA e clicca su "Predict GO" per ottenere le predizioni delle funzioni
+                            della proteina basate sui termini Gene Ontology. Puoi anche generare una visualizzazione 2D della struttura.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
 
 <style>
 .protein-grid {
     display: grid;
-    grid-template-columns: repeat(20, 20px);
-    grid-template-rows: repeat(20, 20px);
-    gap: 1px;
+    grid-template-columns: repeat(20, 30px);
+    grid-template-rows: repeat(20, 30px);
+    gap: 5px;
     margin: 20px auto;
     width: fit-content;
 }
 
 .grid-cell {
-    width: 18px;
-    height: 18px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: bold;
-    border-radius: 2px;
+    border-radius: 50%;
 }
 
 .grid-cell.H {
-    background-color: #ff6b6b;
+    background-color: #ef4444;
     color: white;
 }
 
 .grid-cell.P {
-    background-color: #4ecdc4;
+    background-color: #3b82f6;
     color: white;
 }
+
+.tabs .tab-content {
+    display: none;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.tabs .tab-content.active {
+    display: block;
+    opacity: 1;
+}
+
+.tab-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background-color: #f8fafc; /* Grigio molto chiaro */
+    color: #64748b; /* Testo grigio */
+    border: 2px solid #e2e8f0; /* Bordo grigio chiaro */
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px; /* Arrotondamento */
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+.tab-button:hover {
+    background-color: #f1f5f9; /* Grigio chiaro hover */
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.tab-button.active {
+    background-color: #dbeafe; /* Blu chiaro */
+    color: #1d4ed8; /* Testo blu scuro */
+    border-color: #3b82f6; /* Bordo blu */
+    box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.tab-button i {
+    font-size: 1.125rem;
+}
+
+.badge {
+    border: 1px solid;
+    transition: all 0.2s ease;
+}
+
+.badge:hover {
+    transform: scale(1.05);
+}
+
+.bg-emerald-100 { background-color: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+.bg-blue-100 { background-color: #dbeafe; color: #1e40af; border-color: #bfdbfe; }
+.bg-amber-100 { background-color: #fef3c7; color: #92400e; border-color: #fde68a; }
+.bg-slate-100 { background-color: #f1f5f9; color: #334155; border-color: #e2e8f0; }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+
+            button.classList.add('active');
+            const tabId = button.getAttribute('data-tab');
+            document.getElementById(tabId).classList.add('active');
+        });
+    });
+});
+</script>
 {% endblock %}

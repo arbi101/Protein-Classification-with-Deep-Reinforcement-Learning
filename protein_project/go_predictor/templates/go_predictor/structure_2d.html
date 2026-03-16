@@ -4,89 +4,269 @@
 {% block title %}Protein 2D Structure - HP Model{% endblock %}
 
 {% block content %}
-<div class="text-center mb-5">
-    <h1 class="fw-bold">Protein 2D Structure - HP Model</h1>
-    <p class="text-muted">Enter a protein sequence in FASTA format to generate the 2D structure in the Hydrophobic-Polar model</p>
-</div>
-
-<div class="card p-4 mb-4">
-  <form method="post" class="row g-0 align-items-end">
-    {% csrf_token %}
-    <div class="col-12">
-        {{ form.fasta_sequence.label_tag }}
-        <small class="form-text text-muted">{{ form.fasta_sequence.help_text }}</small>
-        {{ form.fasta_sequence }}
-        {% if form.fasta_sequence.errors %}
-            <div class="text-danger small">{{ form.fasta_sequence.errors }}</div>
-        {% endif %}
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+    <!-- Header -->
+    <div class="text-center mb-8">
+        <div class="inline-flex items-center gap-2 mb-4">
+            <div class="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <i data-lucide="dna" class="size-8 text-white"></i>
+            </div>
+        </div>
+        <h1 class="text-4xl font-bold text-slate-900 mb-2">
+            Struttura 2D - Modello HP
+        </h1>
     </div>
-    <div class="col-12 text-end mt-3">
-        <button type="submit" class="btn btn-dark">
-            <i class="fas fa-cubes"></i> Generate Structure
-        </button>
-    </div>
-  </form>
-</div>
 
-{% if structure %}
-    <div class="row">
-        <div class="col-md-8">
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">2D Structure</h5>
-                    <div class="protein-grid">
-                        {% for point in structure %}
+    <!-- Input Section -->
+    <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-xl font-semibold flex items-center gap-2">
+                <i data-lucide="network" class="size-5 text-purple-600"></i>
+                Inserisci sequenza proteica (FASTA)
+            </h3>
+        </div>
+        <div class="p-6">
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label for="{{ form.fasta_sequence.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ form.fasta_sequence.label }}
+                    </label>
+                    <textarea
+                        name="{{ form.fasta_sequence.name }}"
+                        id="{{ form.fasta_sequence.id_for_label }}"
+                        class="w-full font-mono text-sm min-h-[200px] resize-y border border-slate-300 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                        placeholder=">ProteinName\nMKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"
+                    >{{ form.fasta_sequence.value|default:">TestProtein1\nMKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
+                    {% if form.fasta_sequence.errors %}
+                        <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
+                        <i data-lucide="network" class="size-4"></i>
+                        Genera Struttura
+                    </button>
+                    <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 ml-3">
+                        <i data-lucide="box" class="size-4"></i>
+                        Genera Struttura 3D (AlphaFold)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if structures %}
+        {% for struct in structures %}
+        <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8 overflow-hidden">
+            <div class="p-6 bg-gradient-to-r from-slate-50 to-purple-50 border-b border-slate-200">
+                <h3 class="text-xl font-bold flex items-center gap-2 text-slate-800">
+                    <i data-lucide="network" class="size-5 text-purple-600"></i>
+                    2D Structure: {{ struct.name }}
+                </h3>
+            </div>
+            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Structure Visualization -->
+                <div class="lg:col-span-2 flex flex-col items-center border-r border-slate-100 pr-0 lg:pr-8">
+                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner">
+                        {% for point in struct.structure %}
                             <div class="grid-cell {{ point.type }}" style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};">
                                 {{ point.type }}
                             </div>
                         {% endfor %}
                     </div>
+                    <div class="mt-6 flex items-center gap-6 bg-white px-6 py-3 rounded-full shadow-sm border border-slate-200">
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
+                            <span class="text-sm font-medium text-slate-700">H - Hydrophobic</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
+                            <span class="text-sm font-medium text-slate-700">P - Polar</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Structure Information -->
+                <div class="space-y-6">
+                    <div>
+                        <div class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                            <i data-lucide="align-left" class="size-4 text-slate-400"></i> HP String
+                        </div>
+                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner break-all">
+                            {{ struct.hp_string }}
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-100">
+                            <div class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="zap" class="size-4"></i> Energy
+                            </div>
+                            <div class="text-3xl font-bold text-amber-600">{{ struct.energy }}</div>
+                        </div>
+                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                            <div class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                <i data-lucide="hash" class="size-4"></i> Length
+                            </div>
+                            <div class="text-3xl font-bold text-blue-600">{{ struct.structure|length }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h6 class="card-title">Information</h6>
-                    <p><strong>HP String:</strong> {{ hp_string }}</p>
-                    <p><strong>Energy:</strong> {{ energy }}</p>
-                    <p><strong>Length:</strong> {{ structure|length }}</p>
+        {% endfor %}
+    {% endif %}
+
+    {% if alphafold_results %}
+        {% for res in alphafold_results %}
+        <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8 overflow-hidden">
+            <div class="p-6 bg-gradient-to-r from-slate-50 to-indigo-50 border-b border-slate-200">
+                <h3 class="text-xl font-bold flex items-center gap-2 text-slate-800">
+                    <i data-lucide="box" class="size-5 text-indigo-600"></i>
+                    3D Structure (AlphaFold): {{ res.name }}
+                </h3>
+            </div>
+            <div class="p-6">
+                {% if res.pdb_url or res.pdb_data %}
+                    <div class="flex flex-col mb-4">
+                        {% if res.source == 'AlphaFold DB' %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="check-circle" class="size-4 text-green-500"></i> Found in AlphaFold DB (UniProt: {{ res.uniprot_id }})
+                            </span>
+                        {% else %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="server" class="size-4 text-blue-500"></i> Generated via ESMFold API
+                            </span>
+                        {% endif %}
+                        <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
+                    </div>
+                    
+                    <!-- 3Dmol.js Viewer -->
+                    <div class="w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
+                         {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-pdb="{{ res.pdb_data }}"{% endif %}
+                         data-backgroundcolor="0x0f172a" 
+                         data-style="cartoon:color=spectrum">
+                    </div>
+                {% else %}
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+                        <i data-lucide="x-circle" class="size-8 text-red-500 mx-auto mb-2"></i>
+                        <h4 class="text-lg font-bold text-red-800 mb-1">Struttura non trovata</h4>
+                        <p class="text-red-700">Impossibile trovare l'ID UniProt `{{ res.uniprot_id|default:"Sconosciuto" }}` nel database AlphaFold per questa sequenza.</p>
+                        <p class="text-sm text-red-600 mt-2">Assicurati che l'header FASTA contenga un UniProt ID valido (es. >sp|P04637|...)</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Import 3Dmol.js for rendering the 3D structures -->
+        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    {% endif %}
+
+    {% if alphafold_results %}
+        <!-- Include 3Dmol.js Library -->
+        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+        
+        {% for res in alphafold_results %}
+        <!-- AlphaFold Results Section -->
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 transition-all hover:shadow-2xl mb-8">
+            <div class="border-b border-slate-100 bg-slate-50 p-6 flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
+                        <i data-lucide="box" class="size-6 text-indigo-600"></i>
+                        {{ res.name }}
+                    </h3>
+                </div>
+                <div class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
+                    3D Structure Mapping
+                </div>
+            </div>
+            
+            <div class="p-6">
+                {% if res.pdb_url or res.pdb_data %}
+                    <div class="flex flex-col mb-4">
+                        {% if res.source == 'AlphaFold DB' %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="check-circle" class="size-4 text-green-500"></i> Found in AlphaFold DB (UniProt: {{ res.uniprot_id }})
+                            </span>
+                        {% else %}
+                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <i data-lucide="server" class="size-4 text-blue-500"></i> Generated via ESMFold API
+                            </span>
+                        {% endif %}
+                        <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
+                    </div>
+                    
+                    <!-- 3Dmol.js Viewer -->
+                    <div class="viewer_3Dmoljs w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
+                         {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-element="pdb_data_{{ forloop.counter }}" data-datatype="pdb"{% endif %}
+                         data-backgroundcolor="0x0f172a" 
+                         data-style="cartoon:color=spectrum">
+                    </div>
+                    {% if not res.pdb_url and res.pdb_data %}
+                    <textarea id="pdb_data_{{ forloop.counter }}" style="display: none;">{{ res.pdb_data }}</textarea>
+                    {% endif %}
+                {% else %}
+                    <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+                        <i data-lucide="alert-triangle" class="size-8 text-red-500 mx-auto mb-3"></i>
+                        <h4 class="text-lg font-semibold text-red-800 mb-2">3D Structure Generation Failed</h4>
+                        <p class="text-red-600">Could not generate a structure using ESMFold or find a match in AlphaFold DB. Check your sequence formatting.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+
+    {% if not structures and not alphafold_results %}
+        <!-- Info Footer -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8">
+            <div class="p-6">
+                <div class="flex items-start gap-3">
+                    <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <div class="text-sm text-blue-900">
+                        <p class="font-medium mb-1">Come funziona?</p>
+                        <p>
+                            Inserisci una sequenza proteica in formato FASTA per generare una visualizzazione 2D della struttura
+                            utilizzando il modello Hydrophobic-Polar (HP).
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-{% endif %}
+    {% endif %}
+</div>
 
 <style>
 .protein-grid {
     display: grid;
-    grid-template-columns: repeat(20, 20px);
-    grid-template-rows: repeat(20, 20px);
-    gap: 1px;
+    grid-template-columns: repeat(20, 30px);
+    grid-template-rows: repeat(20, 30px);
+    gap: 5px;
     margin: 20px auto;
     width: fit-content;
 }
 
 .grid-cell {
-    width: 18px;
-    height: 18px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 12px;
     font-weight: bold;
-    border-radius: 2px;
+    border-radius: 50%;
 }
 
 .grid-cell.H {
-    background-color: #ff6b6b;
+    background-color: #ef4444;
     color: white;
 }
 
 .grid-cell.P {
-    background-color: #4ecdc4;
+    background-color: #3b82f6;
     color: white;
 }
 </style>
-
 {% endblock %}
