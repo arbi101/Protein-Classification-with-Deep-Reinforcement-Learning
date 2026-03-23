@@ -230,46 +230,83 @@ def sequence_to_hp(sequence):
     return hp_string
 
 
-def generate_2d_structure(hp_string):
+def generate_2d_structure(hp_string, iterations=2000):
     """
-    Generates a simple 2D structure using self-avoiding walk
+    Generates a 2D structure using Hill Climbing with Pivot Moves
     Returns list of positions (x,y) and energy
     """
     if not hp_string:
         return [], 0
+
+    def calculate_energy(pos_list):
+        e = 0
+        pos_dict = {pos: i for i, pos in enumerate(pos_list)}
+        for i in range(len(pos_list)):
+            if hp_string[i] == 'H':
+                x, y = pos_list[i]
+                # Check non-consecutive neighbors
+                for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+                    nx, ny = x + dx, y + dy
+                    if (nx, ny) in pos_dict:
+                        j = pos_dict[(nx, ny)]
+                        if abs(i - j) > 1 and hp_string[j] == 'H':
+                            e += 1
+        return e // 2
+
+    # Initialize with a straight line (valid self-avoiding configuration)
+    current_positions = [(i, 0) for i in range(len(hp_string))]
+    current_energy = calculate_energy(current_positions)
     
-    positions = [(0, 0)]  # Start from (0,0)
-    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # Up, Right, Down, Left
-    
-    for i in range(1, len(hp_string)):
-        # Try random directions until finding a free one
-        random.shuffle(directions)
-        placed = False
-        for dx, dy in directions:
-            nx, ny = positions[-1][0] + dx, positions[-1][1] + dy
-            if (nx, ny) not in positions:
-                positions.append((nx, ny))
-                placed = True
-                break
-        if not placed:
-            # If not found, stop (for simplicity)
+    best_positions = list(current_positions)
+    best_energy = current_energy
+
+    for _ in range(iterations):
+        if len(hp_string) <= 2:
             break
-    
-    # Calculate energy: number of non-consecutive HH contacts
-    energy = 0
-    for i in range(len(positions)):
-        if hp_string[i] == 'H':
-            x, y = positions[i]
-            # Check non-consecutive neighbors
-            for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
-                nx, ny = x + dx, y + dy
-                if (nx, ny) in positions:
-                    j = positions.index((nx, ny))
-                    if abs(i - j) > 1 and hp_string[j] == 'H':
-                        energy += 1
-    energy //= 2  # Each contact counted twice
-    
-    return positions, energy
+            
+        # Scegli un punto di pivot casuale (tranne l'ultimo nodo)
+        pivot_idx = random.randint(1, len(hp_string) - 2)
+        # Scegli una rotazione: 90, -90, or 180 gradi
+        angle = random.choice([90, -90, 180])
+        
+        # Applica rotazione ai nodi successivi al pivot
+        cx, cy = current_positions[pivot_idx]
+        new_positions = list(current_positions)
+        
+        # Pre-calcola seno e coseno
+        if angle == 90:
+            cos_a, sin_a = 0, 1
+        elif angle == -90:
+            cos_a, sin_a = 0, -1
+        else: # 180
+            cos_a, sin_a = -1, 0
+            
+        for i in range(pivot_idx + 1, len(hp_string)):
+            x, y = current_positions[i]
+            # Trasla rispetto al pivot
+            tx, ty = x - cx, y - cy
+            # Ruota
+            rx = tx * cos_a - ty * sin_a
+            ry = tx * sin_a + ty * cos_a
+            # Ritorna alla posizione originale
+            new_positions[i] = (rx + cx, ry + cy)
+            
+        # Verifica se è auto-evitante (nessuna sovrapposizione)
+        if len(set(new_positions)) == len(new_positions):
+            # Calcola nuova energia
+            new_energy = calculate_energy(new_positions)
+            
+            # Acceptance condition: accept if new energy is non-decreasing (allows moving in plateaus)
+            if new_energy >= current_energy:
+                current_positions = new_positions
+                current_energy = new_energy
+                
+                # Update absolute best
+                if current_energy > best_energy:
+                    best_positions = list(current_positions)
+                    best_energy = current_energy
+                    
+    return best_positions, best_energy
 
 
 def structure_2d(request):
