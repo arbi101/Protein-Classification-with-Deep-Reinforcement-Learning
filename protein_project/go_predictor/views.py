@@ -230,7 +230,7 @@ def sequence_to_hp(sequence):
     return hp_string
 
 
-def generate_2d_structure(hp_string, iterations=2000):
+def generate_2d_structure(hp_string, iterations=1000000):
     """
     Generates a 2D structure using Hill Climbing with Pivot Moves
     Returns list of positions (x,y) and energy
@@ -251,7 +251,7 @@ def generate_2d_structure(hp_string, iterations=2000):
                         j = pos_dict[(nx, ny)]
                         if abs(i - j) > 1 and hp_string[j] == 'H':
                             e += 1
-        return e // 2
+        return -(e // 2)
 
     # Initialize with a straight line (valid self-avoiding configuration)
     current_positions = [(i, 0) for i in range(len(hp_string))]
@@ -296,13 +296,13 @@ def generate_2d_structure(hp_string, iterations=2000):
             # Calcola nuova energia
             new_energy = calculate_energy(new_positions)
             
-            # Acceptance condition: accept if new energy is non-decreasing (allows moving in plateaus)
-            if new_energy >= current_energy:
+            # Acceptance condition: accept if new energy is non-increasing (allows moving in plateaus)
+            if new_energy <= current_energy:
                 current_positions = new_positions
                 current_energy = new_energy
                 
                 # Update absolute best
-                if current_energy > best_energy:
+                if current_energy < best_energy:
                     best_positions = list(current_positions)
                     best_energy = current_energy
                     
