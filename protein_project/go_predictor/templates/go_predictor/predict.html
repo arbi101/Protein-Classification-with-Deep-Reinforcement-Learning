@@ -57,11 +57,11 @@
                     </button>
                     <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
                         <i data-lucide="network" class="size-4"></i>
-                        Genera Struttura 2D
+                        Generate 2D Structure
                     </button>
                     <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
                         <i data-lucide="box" class="size-4"></i>
-                        Genera Struttura 3D (AlphaFold)
+                        Generate 3D Structure (AlphaFold)
                     </button>
                 </div>
             </form>
@@ -89,9 +89,16 @@
             <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <!-- Structure Visualization -->
                 <div class="lg:col-span-2 flex flex-col items-center border-r border-slate-100 pr-0 lg:pr-8">
-                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner">
+                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner relative" id="grid-{{ forloop.counter }}">
+                        <!-- SVG container for lines -->
+                        <svg class="backbone-svg absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 0;"></svg>
+                        
                         {% for point in struct.structure %}
-                            <div class="grid-cell {{ point.type }}" style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};">
+                            <div class="grid-cell {{ point.type }} relative z-10 transition-all duration-200 cursor-help" 
+                                 style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};"
+                                 data-index="{{ forloop.counter0 }}"
+                                 data-grid-id="grid-{{ forloop.parentloop.counter }}"
+                                 title="Amino acid #{{ forloop.counter }} | Type: {% if point.type == 'H' %}Hydrophobic{% else %}Polar{% endif %}">
                                 {{ point.type }}
                             </div>
                         {% endfor %}
@@ -114,8 +121,10 @@
                         <div class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
                             <i data-lucide="align-left" class="size-4 text-slate-400"></i> HP String
                         </div>
-                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner break-all">
-                            {{ struct.hp_string }}
+                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner flex flex-wrap gap-0.5 hp-string-container" data-grid-id="grid-{{ forloop.counter }}">
+                            {% for char in struct.hp_string|make_list %}
+                                <span class="hp-char cursor-help px-1 rounded transition-colors duration-200 hover:bg-slate-600" data-index="{{ forloop.counter0 }}">{{ char }}</span>
+                            {% endfor %}
                         </div>
                     </div>
                     
@@ -297,10 +306,10 @@
                 <div class="flex items-start gap-3">
                     <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
                     <div class="text-sm text-blue-900">
-                        <p class="font-medium mb-1">Come funziona?</p>
+                        <p class="font-medium mb-1">How does it work?</p>
                         <p>
-                            Inserisci una sequenza proteica in formato FASTA e clicca su "Predict GO" per ottenere le predizioni delle funzioni
-                            della proteina basate sui termini Gene Ontology. Puoi anche generare una visualizzazione 2D della struttura.
+                            Enter a protein sequence in FASTA format and click on "Predict GO" to obtain functional predictions
+                            of the protein based on Gene Ontology terms. You can also generate a 2D visualization of the structure.
                         </p>
                     </div>
                 </div>
@@ -340,6 +349,23 @@
     color: white;
 }
 
+.grid-cell.active {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+    z-index: 20;
+}
+
+.grid-cell[data-index="0"] {
+    border: 3px solid #22c55e; /* Green border for Start */
+}
+
+.hp-char.active {
+    background-color: #3b82f6;
+    color: white;
+    font-weight: bold;
+    transform: scale(1.1);
+}
+
 .tabs .tab-content {
     display: none;
     opacity: 0;
@@ -356,11 +382,11 @@
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    background-color: #f8fafc; /* Grigio molto chiaro */
-    color: #64748b; /* Testo grigio */
-    border: 2px solid #e2e8f0; /* Bordo grigio chiaro */
+    background-color: #f8fafc; /* Very light grey */
+    color: #64748b; /* Grey text */
+    border: 2px solid #e2e8f0; /* Light grey border */
     padding: 0.75rem 1.5rem;
-    border-radius: 50px; /* Arrotondamento */
+    border-radius: 50px; /* Rounding */
     font-weight: 500;
     font-size: 0.875rem;
     transition: all 0.3s ease;
@@ -369,16 +395,16 @@
 }
 
 .tab-button:hover {
-    background-color: #f1f5f9; /* Grigio chiaro hover */
+    background-color: #f1f5f9; /* Light grey hover */
     border-color: #cbd5e1;
     transform: translateY(-1px);
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .tab-button.active {
-    background-color: #dbeafe; /* Blu chiaro */
-    color: #1d4ed8; /* Testo blu scuro */
-    border-color: #3b82f6; /* Bordo blu */
+    background-color: #dbeafe; /* Light blue */
+    color: #1d4ed8; /* Dark blue text */
+    border-color: #3b82f6; /* Blue border */
     box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
@@ -416,6 +442,87 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById(tabId).classList.add('active');
         });
     });
+
+    // Function to draw SVG backbones
+    function drawBackbones() {
+        document.querySelectorAll('.protein-grid').forEach(grid => {
+            const svg = grid.querySelector('.backbone-svg');
+            if(!svg) return;
+            
+            svg.innerHTML = ''; // clear existing lines
+            const cells = Array.from(grid.querySelectorAll('.grid-cell')).sort((a,b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
+            
+            for(let i = 0; i < cells.length - 1; i++) {
+                const c1 = cells[i];
+                const c2 = cells[i+1];
+                
+                // Calculate center points relative to the grid container
+                const x1 = c1.offsetLeft + (c1.offsetWidth / 2);
+                const y1 = c1.offsetTop + (c1.offsetHeight / 2);
+                const x2 = c2.offsetLeft + (c2.offsetWidth / 2);
+                const y2 = c2.offsetTop + (c2.offsetHeight / 2);
+                
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('stroke', '#cbd5e1'); // slate-300
+                line.setAttribute('stroke-width', '2.5');
+                
+                svg.appendChild(line);
+            }
+        });
+    }
+
+    // Interactive Hover Sync
+    function setupInteractivity() {
+        const grids = document.querySelectorAll('.protein-grid');
+        grids.forEach(grid => {
+            const gridId = grid.id;
+            const container = document.querySelector(`.hp-string-container[data-grid-id="${gridId}"]`);
+            if(!container) return;
+            
+            const cells = grid.querySelectorAll('.grid-cell');
+            const chars = container.querySelectorAll('.hp-char');
+            
+            cells.forEach(cell => {
+                cell.addEventListener('mouseenter', () => {
+                    const idx = cell.dataset.index;
+                    cell.classList.add('active');
+                    if(chars[idx]) chars[idx].classList.add('active');
+                });
+                cell.addEventListener('mouseleave', () => {
+                    const idx = cell.dataset.index;
+                    cell.classList.remove('active');
+                    if(chars[idx]) chars[idx].classList.remove('active');
+                });
+            });
+            
+            chars.forEach(char => {
+                char.addEventListener('mouseenter', () => {
+                    const idx = char.dataset.index;
+                    char.classList.add('active');
+                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
+                    if(cell) cell.classList.add('active');
+                });
+                char.addEventListener('mouseleave', () => {
+                    const idx = char.dataset.index;
+                    char.classList.remove('active');
+                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
+                    if(cell) cell.classList.remove('active');
+                });
+            });
+        });
+    }
+
+    // Initialize drawings
+    setTimeout(() => {
+        drawBackbones();
+        setupInteractivity();
+    }, 100);
+
+    window.addEventListener('resize', drawBackbones);
 });
 </script>
 {% endblock %}

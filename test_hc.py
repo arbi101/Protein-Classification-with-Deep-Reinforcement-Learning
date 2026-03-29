@@ -50,16 +50,16 @@ def generate_2d_structure(hp_string, iterations=1000000):
         if len(hp_string) <= 2:
             break
             
-        # Scegli un punto di pivot casuale (tranne l'ultimo nodo)
+        # Choose a random pivot point (except the last node)
         pivot_idx = random.randint(1, len(hp_string) - 2)
-        # Scegli una rotazione: 90, -90, or 180 gradi
+        # Choose a rotation: 90, -90, or 180 degrees
         angle = random.choice([90, -90, 180])
         
-        # Applica rotazione ai nodi successivi al pivot
+        # Apply rotation to the nodes subsequent to the pivot
         cx, cy = current_positions[pivot_idx]
         new_positions = list(current_positions)
         
-        # Pre-calcola seno e coseno
+        # Pre-calculate sine and cosine
         if angle == 90:
             cos_a, sin_a = 0, 1
         elif angle == -90:
@@ -69,17 +69,17 @@ def generate_2d_structure(hp_string, iterations=1000000):
             
         for i in range(pivot_idx + 1, len(hp_string)):
             x, y = current_positions[i]
-            # Trasla rispetto al pivot
+            # Translate relative to pivot
             tx, ty = x - cx, y - cy
-            # Ruota
+            # Rotate
             rx = tx * cos_a - ty * sin_a
             ry = tx * sin_a + ty * cos_a
-            # Ritorna alla posizione originale
+            # Return to original position
             new_positions[i] = (rx + cx, ry + cy)
             
-        # Verifica se è auto-evitante (nessuna sovrapposizione)
+        # Check if it is self-avoiding (no overlaps)
         if len(set(new_positions)) == len(new_positions):
-            # Calcola nuova energia
+            # Calculate new energy
             new_energy = calculate_energy(new_positions)
             
             # Acceptance condition: accept if new energy is non-increasing (allows moving in plateaus)
