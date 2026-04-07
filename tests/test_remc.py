@@ -105,9 +105,10 @@ def generate_2d_structure_remc(hp_string, iterations=50000, num_replicas=5, t_mi
 
 if __name__ == "__main__":
     p = "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLL"  # 33 AA
-    hp_str = sequence_to_hp(p)
+    p2 = "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"
+    hp_str = sequence_to_hp(p2)
     print("=== TEST REPLICA EXCHANGE MONTE CARLO ===")
-    print(f"Sequence : {p}")
+    print(f"Sequence : {p2}")
     print(f"HP String: {hp_str}")
     start = time.time()
     _, energy = generate_2d_structure_remc(hp_str, iterations=100000)

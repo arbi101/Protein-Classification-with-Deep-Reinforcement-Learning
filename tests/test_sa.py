@@ -116,6 +116,9 @@ if __name__ == "__main__":
     p9 = "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWT"  # 39 AA
     p10 = "MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRF"  # 42 AA
 
+    p= "MQIFVKTLTGKTITLEVEPSDTIENVKAKIQDKEGIPPDQQRLIFAGKQLEDGRTLSDYNIQKESTLHLVLRLRGG"
+
+    """
     proteins = [
         ("Protein 1 (6 AA)", p1),
         ("Protein 2 (15 AA)", p2),
@@ -128,6 +131,8 @@ if __name__ == "__main__":
         ("Protein 9 (39 AA)", p9),
         ("Protein 10 (42 AA)", p10),
     ]
+    """
+    proteins = [("Protein 11 (64 AA)", p)]
 
     iterations_to_test = [1000, 10000, 50000, 100000]
 
