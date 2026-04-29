@@ -42,15 +42,52 @@
                         <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
                     {% endif %}
                 </div>
-                <div class="flex justify-end">
-                    <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2">
-                        <i data-lucide="network" class="size-4"></i>
-                        Generate Structure
+                <div class="flex flex-wrap gap-3 mt-6">
+                    <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors">
+                        Generate 2D Structure
                     </button>
-                    <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-md flex items-center gap-2 ml-3">
-                        <i data-lucide="box" class="size-4"></i>
+                    <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors">
                         Generate 3D Structure (AlphaFold)
                     </button>
+                </div>
+
+                <hr class="my-6 border-slate-200">
+
+                <div class="mb-2">
+                    <h4 class="text-sm font-semibold text-slate-700 mb-3">Algorithm per la generazione 2D</h4>
+                    <div class="flex flex-wrap gap-3">
+                        <label class="cursor-pointer">
+                            <input type="radio" name="algorithm" value="hc" class="hidden peer">
+                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
+                                Hill Climbing
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="algorithm" value="sa" class="hidden peer" checked>
+                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
+                                Simulated Annealing
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="algorithm" value="mc" class="hidden peer">
+                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
+                                Monte Carlo
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="algorithm" value="remc" class="hidden peer">
+                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
+                                Replica Exchange MC
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" name="algorithm" value="ql" class="hidden peer">
+                            <div class="px-5 py-2 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm peer-checked:bg-emerald-600 peer-checked:text-white hover:bg-emerald-100 transition-all border border-emerald-200 peer-checked:border-emerald-600">
+                                ⚡ Q-Learning (RL)
+                            </div>
+                        </label>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-3">Seleziona l'algoritmo per ottimizzare la struttura 2D · <span class="text-emerald-600 font-medium">Q-Learning è consigliato per proteine ≤ 25 AA</span></p>
                 </div>
             </form>
         </div>

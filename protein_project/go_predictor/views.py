@@ -3,6 +3,35 @@ from .forms import ProteinSearchForm
 import requests
 import random
 import math
+import sys
+import os
+
+# Add tests directory to python path dynamically
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_dir = os.path.dirname(os.path.dirname(current_dir))
+tests_dir = os.path.join(project_dir, 'tests')
+if tests_dir not in sys.path:
+    sys.path.append(tests_dir)
+
+try:
+    from test_hc import generate_2d_structure as run_hc
+    from test_sa import generate_2d_structure_sa as run_sa
+    from test_mc import generate_2d_structure_mc as run_mc
+    from test_remc import generate_2d_structure_remc as run_remc
+    from test_ql import generate_2d_structure_ql as _run_ql_raw
+
+    def run_ql(hp_string, episodes=500, max_steps_per_episode=200, **kwargs):
+        """Wrapper: returns only (positions, energy) to match the other algorithm signatures."""
+        positions, energy, _ = _run_ql_raw(
+            hp_string,
+            episodes=episodes,
+            max_steps_per_episode=max_steps_per_episode,
+            **kwargs
+        )
+        return positions, energy
+
+except ImportError as e:
+    print(f"Warning: Could not import algorithms from tests folder. {e}")
 
 def get_uniprot_id_from_fasta(header):
     """
@@ -84,11 +113,23 @@ def predict_go(request):
 
             elif action == 'structure':
                 structures = []
+                algorithm = request.POST.get('algorithm', 'sa')
                 if sequences:
                     for seq_data in sequences[:5]:  # Limit to 5 for performance
                         sequence = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)
-                        positions, energy = generate_2d_structure_sa(hp_string)
+                        
+                        if algorithm == 'hc':
+                            positions, energy = run_hc(hp_string, iterations=50000)
+                        elif algorithm == 'mc':
+                            positions, energy = run_mc(hp_string, iterations=50000, temperature=2.0)
+                        elif algorithm == 'remc':
+                            positions, energy = run_remc(hp_string, iterations=50000, num_replicas=5)
+                        elif algorithm == 'ql':
+                            positions, energy = run_ql(hp_string, episodes=500, max_steps_per_episode=200)
+                        else: # sa (default)
+                            positions, energy = run_sa(hp_string, iterations=50000)
+                            
                         structure = [{'x': x, 'y': y, 'type': hp_string[i]} for i, (x, y) in enumerate(positions)]
                         structures.append({
                             'name': seq_data['header'] or f'Sequence {len(structures)+1}',
@@ -231,85 +272,6 @@ def sequence_to_hp(sequence):
     return hp_string
 
 
-def generate_2d_structure_sa(hp_string, iterations=50000, initial_t=10.0, final_t=0.01):
-    """
-    Generates a 2D structure using Simulated Annealing with Pivot Moves
-    Returns list of positions (x,y) and energy
-    """
-    if not hp_string:
-        return [], 0
-
-    def calculate_energy(pos_list):
-        e = 0
-        pos_dict = {pos: i for i, pos in enumerate(pos_list)}
-        for i in range(len(pos_list)):
-            if hp_string[i] == 'H':
-                x, y = pos_list[i]
-                for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
-                    nx, ny = x + dx, y + dy
-                    if (nx, ny) in pos_dict:
-                        j = pos_dict[(nx, ny)]
-                        if abs(i - j) > 1 and hp_string[j] == 'H':
-                            e += 1
-        return -(e // 2)
-
-    current_positions = [(i, 0) for i in range(len(hp_string))]
-    current_energy = calculate_energy(current_positions)
-    
-    best_positions = list(current_positions)
-    best_energy = current_energy
-
-    for i in range(iterations):
-        if len(hp_string) <= 2:
-            break
-            
-        if iterations > 1:
-            fraction = i / float(iterations - 1)
-            T = initial_t * ((final_t / initial_t) ** fraction)
-        else:
-            T = final_t
-            
-        pivot_idx = random.randint(1, len(hp_string) - 2)
-        angle = random.choice([90, -90, 180])
-        
-        cx, cy = current_positions[pivot_idx]
-        new_positions = list(current_positions)
-        
-        if angle == 90:
-            cos_a, sin_a = 0, 1
-        elif angle == -90:
-            cos_a, sin_a = 0, -1
-        else:
-            cos_a, sin_a = -1, 0
-            
-        for k in range(pivot_idx + 1, len(hp_string)):
-            x, y = current_positions[k]
-            tx, ty = x - cx, y - cy
-            rx = tx * cos_a - ty * sin_a
-            ry = tx * sin_a + ty * cos_a
-            new_positions[k] = (rx + cx, ry + cy)
-            
-        if len(set(new_positions)) == len(new_positions):
-            new_energy = calculate_energy(new_positions)
-            
-            if new_energy <= current_energy:
-                current_positions = new_positions
-                current_energy = new_energy
-                
-                if current_energy < best_energy:
-                    best_positions = list(current_positions)
-                    best_energy = current_energy
-            else:
-                delta_e = new_energy - current_energy
-                probability = math.exp(-delta_e / T) 
-                
-                if random.random() < probability:
-                    current_positions = new_positions
-                    current_energy = new_energy
-
-    return best_positions, best_energy
-
-
 def structure_2d(request):
     structures = []
     alphafold_results = []
@@ -322,11 +284,23 @@ def structure_2d(request):
             sequences = parse_fasta(fasta_str)
             
             if action == 'structure' or not action:
+                algorithm = request.POST.get('algorithm', 'sa')
                 if sequences:
                     for seq_data in sequences[:5]:  # Limit to 5
                         sequence = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)
-                        positions, energy = generate_2d_structure_sa(hp_string)
+                        
+                        if algorithm == 'hc':
+                            positions, energy = run_hc(hp_string, iterations=50000)
+                        elif algorithm == 'mc':
+                            positions, energy = run_mc(hp_string, iterations=50000, temperature=2.0)
+                        elif algorithm == 'remc':
+                            positions, energy = run_remc(hp_string, iterations=50000, num_replicas=5)
+                        elif algorithm == 'ql':
+                            positions, energy = run_ql(hp_string, episodes=500, max_steps_per_episode=200)
+                        else: # sa (default)
+                            positions, energy = run_sa(hp_string, iterations=50000)
+                            
                         # Convert positions to list for template
                         structure = [{'x': x, 'y': y, 'type': hp_string[i]} for i, (x, y) in enumerate(positions)]
                         structures.append({

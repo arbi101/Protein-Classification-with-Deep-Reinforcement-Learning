@@ -42,27 +42,86 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0):
         if len(hp_string) <= 2:
             break
             
-        pivot_idx = random.randint(1, len(hp_string) - 2)
-        angle = random.choice([90, -90, 180])
+        move_types = ['end_flip', 'kink_jump', 'crankshaft', 'pivot']
+        move = random.choices(move_types, weights=[0.2, 0.3, 0.3, 0.2])[0]
         
-        cx, cy = current_positions[pivot_idx]
         new_positions = list(current_positions)
+        valid_move = False
         
-        if angle == 90:
-            cos_a, sin_a = 0, 1
-        elif angle == -90:
-            cos_a, sin_a = 0, -1
-        else:
-            cos_a, sin_a = -1, 0
+        if move == 'end_flip':
+            idx = random.choice([0, len(hp_string) - 1])
+            anchor_idx = 1 if idx == 0 else len(hp_string) - 2
+            ax, ay = current_positions[anchor_idx]
             
-        for k in range(pivot_idx + 1, len(hp_string)):
-            x, y = current_positions[k]
-            tx, ty = x - cx, y - cy
-            rx = tx * cos_a - ty * sin_a
-            ry = tx * sin_a + ty * cos_a
-            new_positions[k] = (rx + cx, ry + cy)
+            possible_moves = []
+            for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+                nx, ny = ax + dx, ay + dy
+                if (nx, ny) not in current_positions and (nx, ny) != current_positions[idx]:
+                    possible_moves.append((nx, ny))
+                    
+            if possible_moves:
+                new_positions[idx] = random.choice(possible_moves)
+                valid_move = True
+                
+        elif move == 'kink_jump':
+            if len(hp_string) > 2:
+                idx = random.randint(1, len(hp_string) - 2)
+                p_prev = current_positions[idx - 1]
+                p_curr = current_positions[idx]
+                p_next = current_positions[idx + 1]
+                
+                dx = abs(p_prev[0] - p_next[0])
+                dy = abs(p_prev[1] - p_next[1])
+                if dx == 1 and dy == 1:
+                    nx = p_prev[0] + p_next[0] - p_curr[0]
+                    ny = p_prev[1] + p_next[1] - p_curr[1]
+                    if (nx, ny) not in current_positions:
+                        new_positions[idx] = (nx, ny)
+                        valid_move = True
+                        
+        elif move == 'crankshaft':
+            if len(hp_string) > 3:
+                idx = random.randint(1, len(hp_string) - 3)
+                p_prev = current_positions[idx - 1]
+                p_curr = current_positions[idx]
+                p_next = current_positions[idx + 1]
+                p_next2 = current_positions[idx + 2]
+                
+                dist_sq = (p_prev[0] - p_next2[0])**2 + (p_prev[1] - p_next2[1])**2
+                if dist_sq == 1:
+                    nx_curr = p_prev[0] + p_next2[0] - p_next[0]
+                    ny_curr = p_prev[1] + p_next2[1] - p_next[1]
+                    nx_next = p_prev[0] + p_next2[0] - p_curr[0]
+                    ny_next = p_prev[1] + p_next2[1] - p_curr[1]
+                    
+                    if (nx_curr, ny_curr) not in current_positions and (nx_next, ny_next) not in current_positions:
+                        new_positions[idx] = (nx_curr, ny_curr)
+                        new_positions[idx + 1] = (nx_next, ny_next)
+                        valid_move = True
+                        
+        elif move == 'pivot':
+            pivot_idx = random.randint(1, len(hp_string) - 2)
+            angle = random.choice([90, -90, 180])
+            cx, cy = current_positions[pivot_idx]
             
-        if len(set(new_positions)) == len(new_positions):
+            if angle == 90:
+                cos_a, sin_a = 0, 1
+            elif angle == -90:
+                cos_a, sin_a = 0, -1
+            else:
+                cos_a, sin_a = -1, 0
+                
+            for k in range(pivot_idx + 1, len(hp_string)):
+                x, y = current_positions[k]
+                tx, ty = x - cx, y - cy
+                rx = tx * cos_a - ty * sin_a
+                ry = tx * sin_a + ty * cos_a
+                new_positions[k] = (rx + cx, ry + cy)
+                
+            if len(set(new_positions)) == len(new_positions):
+                valid_move = True
+                
+        if valid_move:
             new_energy = calculate_energy(new_positions)
             
             # Acceptance condition

@@ -18,7 +18,7 @@ def sequence_to_hp(sequence):
 
 def generate_2d_structure(hp_string, iterations=1000000):
     """
-    Generates a 2D structure using Hill Climbing with Pivot Moves
+    Generates a 2D structure using Hill Climbing with Local and Pivot Moves
     Returns list of positions (x,y) and energy
     """
     if not hp_string:
@@ -50,39 +50,95 @@ def generate_2d_structure(hp_string, iterations=1000000):
         if len(hp_string) <= 2:
             break
             
-        # Choose a random pivot point (except the last node)
-        pivot_idx = random.randint(1, len(hp_string) - 2)
-        # Choose a rotation: 90, -90, or 180 degrees
-        angle = random.choice([90, -90, 180])
+        move_types = ['end_flip', 'kink_jump', 'crankshaft', 'pivot']
+        # Favor local moves over pivot moves to avoid high rejection rates in compact states
+        move = random.choices(move_types, weights=[0.2, 0.3, 0.3, 0.2])[0]
         
-        # Apply rotation to the nodes subsequent to the pivot
-        cx, cy = current_positions[pivot_idx]
         new_positions = list(current_positions)
+        valid_move = False
         
-        # Pre-calculate sine and cosine
-        if angle == 90:
-            cos_a, sin_a = 0, 1
-        elif angle == -90:
-            cos_a, sin_a = 0, -1
-        else: # 180
-            cos_a, sin_a = -1, 0
+        if move == 'end_flip':
+            idx = random.choice([0, len(hp_string) - 1])
+            anchor_idx = 1 if idx == 0 else len(hp_string) - 2
+            ax, ay = current_positions[anchor_idx]
             
-        for i in range(pivot_idx + 1, len(hp_string)):
-            x, y = current_positions[i]
-            # Translate relative to pivot
-            tx, ty = x - cx, y - cy
-            # Rotate
-            rx = tx * cos_a - ty * sin_a
-            ry = tx * sin_a + ty * cos_a
-            # Return to original position
-            new_positions[i] = (rx + cx, ry + cy)
+            possible_moves = []
+            for dx, dy in [(0,1), (1,0), (0,-1), (-1,0)]:
+                nx, ny = ax + dx, ay + dy
+                # Must be an empty spot, and not the current position (to actually move)
+                if (nx, ny) not in current_positions and (nx, ny) != current_positions[idx]:
+                    possible_moves.append((nx, ny))
+                    
+            if possible_moves:
+                new_positions[idx] = random.choice(possible_moves)
+                valid_move = True
+                
+        elif move == 'kink_jump':
+            if len(hp_string) > 2:
+                idx = random.randint(1, len(hp_string) - 2)
+                p_prev = current_positions[idx - 1]
+                p_curr = current_positions[idx]
+                p_next = current_positions[idx + 1]
+                
+                # Check if it forms a corner (distance between prev and next is sqrt(2))
+                dx = abs(p_prev[0] - p_next[0])
+                dy = abs(p_prev[1] - p_next[1])
+                if dx == 1 and dy == 1:
+                    # New position is the opposite corner
+                    nx = p_prev[0] + p_next[0] - p_curr[0]
+                    ny = p_prev[1] + p_next[1] - p_curr[1]
+                    if (nx, ny) not in current_positions:
+                        new_positions[idx] = (nx, ny)
+                        valid_move = True
+                        
+        elif move == 'crankshaft':
+            if len(hp_string) > 3:
+                idx = random.randint(1, len(hp_string) - 3)
+                p_prev = current_positions[idx - 1]
+                p_curr = current_positions[idx]
+                p_next = current_positions[idx + 1]
+                p_next2 = current_positions[idx + 2]
+                
+                # Check if it forms a U-shape (distance between prev and next2 is 1)
+                dist_sq = (p_prev[0] - p_next2[0])**2 + (p_prev[1] - p_next2[1])**2
+                if dist_sq == 1:
+                    # Flip 180 degrees
+                    nx_curr = p_prev[0] + p_next2[0] - p_next[0]
+                    ny_curr = p_prev[1] + p_next2[1] - p_next[1]
+                    nx_next = p_prev[0] + p_next2[0] - p_curr[0]
+                    ny_next = p_prev[1] + p_next2[1] - p_curr[1]
+                    
+                    if (nx_curr, ny_curr) not in current_positions and (nx_next, ny_next) not in current_positions:
+                        new_positions[idx] = (nx_curr, ny_curr)
+                        new_positions[idx + 1] = (nx_next, ny_next)
+                        valid_move = True
+                        
+        elif move == 'pivot':
+            pivot_idx = random.randint(1, len(hp_string) - 2)
+            angle = random.choice([90, -90, 180])
+            cx, cy = current_positions[pivot_idx]
             
-        # Check if it is self-avoiding (no overlaps)
-        if len(set(new_positions)) == len(new_positions):
-            # Calculate new energy
+            if angle == 90:
+                cos_a, sin_a = 0, 1
+            elif angle == -90:
+                cos_a, sin_a = 0, -1
+            else: # 180
+                cos_a, sin_a = -1, 0
+                
+            for i in range(pivot_idx + 1, len(hp_string)):
+                x, y = current_positions[i]
+                tx, ty = x - cx, y - cy
+                rx = tx * cos_a - ty * sin_a
+                ry = tx * sin_a + ty * cos_a
+                new_positions[i] = (rx + cx, ry + cy)
+                
+            if len(set(new_positions)) == len(new_positions):
+                valid_move = True
+                
+        if valid_move:
             new_energy = calculate_energy(new_positions)
             
-            # Acceptance condition: accept if new energy is non-increasing (allows moving in plateaus)
+            # Acceptance condition: accept if new energy is non-increasing
             if new_energy <= current_energy:
                 current_positions = new_positions
                 current_energy = new_energy
