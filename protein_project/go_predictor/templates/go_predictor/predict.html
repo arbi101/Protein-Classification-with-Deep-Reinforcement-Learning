@@ -2,7 +2,7 @@
 {% load static %}
 {% load go_tags %}
 
-{% block title %}GO Terms Search{% endblock %}
+{% block title %}Protein Analysis & Prediction{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8 max-w-7xl">
@@ -14,10 +14,10 @@
             </div>
         </div>
         <h1 class="text-4xl font-bold text-slate-900 mb-2">
-            Protein Function Prediction with DeepGO
+            Protein Structure & Function Analysis
         </h1>
         <p class="text-slate-600 text-lg">
-            Enter a protein sequence in FASTA format to predict Gene Ontology terms
+            Analyze protein sequences for function prediction, 2D structure generation, and 3D modeling
         </p>
     </div>
 
@@ -45,7 +45,7 @@
                         id="{{ form.fasta_sequence.id_for_label }}"
                         class="w-full font-mono text-sm min-h-[200px] resize-y border border-slate-300 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder=">ProteinName&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"
-                    >{{ form.fasta_sequence.value|default:">TestProtein1\nMKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
+                    >{{ form.fasta_sequence.value|default:">TestProtein1&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
                     {% if form.fasta_sequence.errors %}
                         <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
                     {% endif %}
@@ -54,7 +54,7 @@
                     <button type="submit" name="action" value="predict" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors disabled:opacity-50">
                         Predict GO
                     </button>
-                    <button type="submit" name="action" value="structure" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors">
+                    <button type="button" id="generate-2d-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors">
                         Generate 2D Structure
                     </button>
                     <button type="submit" name="action" value="alphafold" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors">
@@ -62,43 +62,158 @@
                     </button>
                 </div>
 
-                <hr class="my-6 border-slate-200">
+                <hr class="my-6 border-slate-200 {% if not structures %}hidden{% endif %}" id="algorithm-separator">
 
-                <div class="mb-2">
-                    <h4 class="text-sm font-semibold text-slate-700 mb-3">Algorithm per la generazione 2D</h4>
-                    <div class="flex flex-wrap gap-3">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="hc" class="hidden peer">
-                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
-                                Hill Climbing
+                <div class="mb-2 {% if not structures %}hidden{% endif %}" id="algorithm-section">
+                    <h4 class="text-sm font-semibold text-slate-700 mb-4">Choose the algorithm and configure parameters</h4>
+                    <div class="space-y-4">
+                        <!-- Hill Climbing -->
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="algorithm" value="hc" class="hidden peer algo-radio" data-algo="hc" {% if selected_algorithm == 'hc' %}checked{% endif %}>
+                            <div class="p-4 rounded-lg border-2 border-slate-200 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-slate-300 transition-all">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="peer-checked:bg-blue-600 bg-slate-200 rounded-full p-2">
+                                        <i data-lucide="trending-up" class="size-4 peer-checked:text-white text-slate-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-slate-800">Hill Climbing</h3>
+                                </div>
+                                <div class="ml-9 space-y-2 algo-params hidden" data-algo="hc">
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-700">Iterations:</label>
+                                        <input type="number" name="hc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                    </div>
+                                </div>
                             </div>
                         </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="sa" class="hidden peer" checked>
-                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
-                                Simulated Annealing
+
+                        <!-- Simulated Annealing -->
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="algorithm" value="sa" class="hidden peer algo-radio" data-algo="sa" {% if selected_algorithm == 'sa' %}checked{% endif %}>
+                            <div class="p-4 rounded-lg border-2 border-slate-200 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-slate-300 transition-all">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="peer-checked:bg-blue-600 bg-slate-200 rounded-full p-2">
+                                        <i data-lucide="zap" class="size-4 peer-checked:text-white text-slate-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-slate-800">Simulated Annealing</h3>
+                                </div>
+                                <div class="ml-9 space-y-2 algo-params hidden" data-algo="sa">
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-700">Iterations:</label>
+                                        <input type="number" name="sa_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Initial T:</label>
+                                            <input type="number" name="sa_initial_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="10.0" min="0.1" step="0.1">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Final T:</label>
+                                            <input type="number" name="sa_final_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="0.01" min="0.001" step="0.001">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="mc" class="hidden peer">
-                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
-                                Monte Carlo
+
+                        <!-- Monte Carlo -->
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="algorithm" value="mc" class="hidden peer algo-radio" data-algo="mc" {% if selected_algorithm == 'mc' %}checked{% endif %}>
+                            <div class="p-4 rounded-lg border-2 border-slate-200 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-slate-300 transition-all">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="peer-checked:bg-blue-600 bg-slate-200 rounded-full p-2">
+                                        <i data-lucide="dice-5" class="size-4 peer-checked:text-white text-slate-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-slate-800">Monte Carlo</h3>
+                                </div>
+                                <div class="ml-9 space-y-2 algo-params hidden" data-algo="mc">
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-700">Iterations:</label>
+                                        <input type="number" name="mc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                    </div>
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-700">Temperature:</label>
+                                        <input type="number" name="mc_temperature" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="2.0" min="0.1" step="0.1">
+                                    </div>
+                                </div>
                             </div>
                         </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="remc" class="hidden peer">
-                            <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
-                                Replica Exchange MC
+
+                        <!-- Replica Exchange MC -->
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="algorithm" value="remc" class="hidden peer algo-radio" data-algo="remc" {% if selected_algorithm == 'remc' %}checked{% endif %}>
+                            <div class="p-4 rounded-lg border-2 border-slate-200 peer-checked:border-blue-600 peer-checked:bg-blue-50 hover:border-slate-300 transition-all">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="peer-checked:bg-blue-600 bg-slate-200 rounded-full p-2">
+                                        <i data-lucide="layers" class="size-4 peer-checked:text-white text-slate-600"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-slate-800">Replica Exchange MC</h3>
+                                </div>
+                                <div class="ml-9 space-y-2 algo-params hidden" data-algo="remc">
+                                    <div>
+                                        <label class="text-xs font-medium text-slate-700">Iterations:</label>
+                                        <input type="number" name="remc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Replicas:</label>
+                                            <input type="number" name="remc_replicas" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="5" min="2" max="15" step="1">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Swap Interval:</label>
+                                            <input type="number" name="remc_swap" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="200" min="50" step="50">
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">T Min:</label>
+                                            <input type="number" name="remc_tmin" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="1.0" min="0.1" step="0.5">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">T Max:</label>
+                                            <input type="number" name="remc_tmax" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="30.0" min="5" step="5">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="ql" class="hidden peer">
-                            <div class="px-5 py-2 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm peer-checked:bg-emerald-600 peer-checked:text-white hover:bg-emerald-100 transition-all border border-emerald-200 peer-checked:border-emerald-600">
-                                ⚡ Q-Learning (RL)
+
+                        <!-- Q-Learning -->
+                        <label class="cursor-pointer block">
+                            <input type="radio" name="algorithm" value="ql" class="hidden peer algo-radio" data-algo="ql" {% if selected_algorithm == 'ql' %}checked{% endif %}>
+                            <div class="p-4 rounded-lg border-2 border-emerald-200 peer-checked:border-emerald-600 peer-checked:bg-emerald-50 hover:border-emerald-300 transition-all">
+                                <div class="flex items-center gap-3 mb-3">
+                                    <div class="peer-checked:bg-emerald-600 bg-emerald-200 rounded-full p-2">
+                                        <i data-lucide="brain" class="size-4 peer-checked:text-white text-emerald-700"></i>
+                                    </div>
+                                    <h3 class="font-semibold text-emerald-800">⚡ Deep Q-Learning (RL)</h3>
+                                </div>
+                                <div class="ml-9 space-y-2 algo-params hidden" data-algo="ql">
+                                    <p class="text-xs text-emerald-700 font-medium">Best for proteins ≤ 25 AA</p>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Episodes:</label>
+                                            <input type="number" name="ql_episodes" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="100" min="10" step="10">
+                                        </div>
+                                        <div>
+                                            <label class="text-xs font-medium text-slate-700">Steps/Episode:</label>
+                                            <input type="number" name="ql_steps" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="200" min="50" step="50">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </label>
                     </div>
-                    <p class="text-xs text-slate-500 mt-3">Seleziona l'algoritmo per ottimizzare la struttura 2D · <span class="text-emerald-600 font-medium">Q-Learning è consigliato per proteine ≤ 25 AA</span></p>
+                    
+                    <p class="text-xs text-slate-500 mt-4">Modify the parameters to optimize generation according to your needs</p>
+                    <div class="mt-6 flex gap-3">
+                        <button type="button" id="cancel-algo-btn" class="px-6 py-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit" name="action" value="structure" class="px-6 py-2.5 text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2">
+                            <i data-lucide="play" class="size-4"></i>
+                            Generate Structure
+                        </button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -122,61 +237,153 @@
                     2D Structure: {{ struct.name }}
                 </h3>
             </div>
-            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Structure Visualization -->
-                <div class="lg:col-span-2 flex flex-col items-center border-r border-slate-100 pr-0 lg:pr-8">
-                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner relative" id="grid-{{ forloop.counter }}">
-                        <!-- SVG container for lines -->
-                        <svg class="backbone-svg absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 0;"></svg>
-                        
-                        {% for point in struct.structure %}
-                            <div class="grid-cell {{ point.type }} relative z-10 transition-all duration-200 cursor-help" 
-                                 style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};"
-                                 data-index="{{ forloop.counter0 }}"
-                                 data-grid-id="grid-{{ forloop.parentloop.counter }}"
-                                 title="Amino acid #{{ forloop.counter }} | Type: {% if point.type == 'H' %}Hydrophobic{% else %}Polar{% endif %}">
-                                {{ point.type }}
-                            </div>
+
+            <!-- Info panel: top section with HP String and Stats -->
+            <div class="p-6 bg-slate-50 border-b border-slate-100 space-y-5">
+                <!-- HP String -->
+                <div>
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <i data-lucide="align-left" class="size-4"></i> HP String
+                    </div>
+                    <div class="font-mono text-sm bg-slate-800 text-slate-100 px-5 py-4 rounded-xl shadow-inner leading-relaxed flex flex-wrap gap-0.5 hp-string-container"
+                         data-svg-id="svg-{{ forloop.counter }}">
+                        {% for char in struct.hp_string|make_list %}
+                            <span class="hp-char cursor-pointer px-1 py-0.5 rounded transition-colors duration-150 hover:bg-slate-600"
+                                  data-index="{{ forloop.counter0 }}">{{ char }}</span>
                         {% endfor %}
                     </div>
-                    <div class="mt-6 flex items-center gap-6 bg-white px-6 py-3 rounded-full shadow-sm border border-slate-200">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
-                            <span class="text-sm font-medium text-slate-700">H - Hydrophobic</span>
+                </div>
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="bg-amber-50 rounded-xl p-5 border border-amber-100 flex flex-col items-center">
+                        <div class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="zap" class="size-4"></i> Energy
                         </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
-                            <span class="text-sm font-medium text-slate-700">P - Polar</span>
+                        <div class="text-4xl font-extrabold text-amber-600 mt-1">{{ struct.energy }}</div>
+                    </div>
+                    <div class="bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col items-center">
+                        <div class="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="hash" class="size-4"></i> Length
                         </div>
+                        <div class="text-4xl font-extrabold text-blue-600 mt-1">{{ struct.structure|length }}</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-xl p-5 border border-purple-100 flex flex-col items-center col-span-2 md:col-span-1">
+                        <div class="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="droplets" class="size-4"></i> H count
+                        </div>
+                        <div class="text-4xl font-extrabold text-purple-600 mt-1">{{ struct.hp_string|cut:"P"|length }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SVG Canvas section -->
+            <div class="p-6">
+                <div class="w-full bg-slate-50 rounded-xl border border-slate-100 shadow-inner overflow-auto">
+                    <svg id="svg-{{ forloop.counter }}" class="protein-svg block mx-auto"
+                         data-structure="{{ struct.structure|safe }}"
+                         style="min-width:200px; min-height:200px;">
+                    </svg>
+                </div>
+                <!-- Legend -->
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-red-500 rounded-full shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">H — Hydrophobic</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-blue-500 rounded-full shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">P — Polar</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-white border-4 border-green-500 shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">Start</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Used Parameters vs Recommended Parameters -->
+            <div class="border-t border-slate-100 p-6 space-y-6">
+                <!-- User Selected Parameters -->
+                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="user" class="size-5 text-blue-600"></i>
+                        <h4 class="text-lg font-bold text-blue-900">Your Selected Parameters</h4>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {% if struct.used_params %}
+                            {% for param_name, param_value in struct.used_params.items %}
+                                {% if param_value != None %}
+                                <div class="bg-blue-50 rounded-xl p-5 border border-blue-200 flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+                                    <div class="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                        {% if "Iterations" in param_name %}
+                                            <i data-lucide="repeat" class="size-4"></i>
+                                        {% elif "Temperature" in param_name and "Final" in param_name %}
+                                            <i data-lucide="thermometer-sun" class="size-4"></i>
+                                        {% elif "Temperature" in param_name or "Temp" in param_name %}
+                                            <i data-lucide="flame" class="size-4"></i>
+                                        {% elif "Replicas" in param_name %}
+                                            <i data-lucide="copy" class="size-4"></i>
+                                        {% elif "Swap" in param_name %}
+                                            <i data-lucide="shuffle" class="size-4"></i>
+                                        {% elif "T Min" in param_name or "T Max" in param_name %}
+                                            <i data-lucide="sliders-horizontal" class="size-4"></i>
+                                        {% elif "Episodes" in param_name %}
+                                            <i data-lucide="play" class="size-4"></i>
+                                        {% elif "Steps" in param_name %}
+                                            <i data-lucide="forward" class="size-4"></i>
+                                        {% else %}
+                                            <i data-lucide="settings" class="size-4"></i>
+                                        {% endif %}
+                                        {{ param_name }}
+                                    </div>
+                                    <div class="text-3xl font-extrabold text-blue-600 mt-1 text-center">{{ param_value }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% endif %}
                     </div>
                 </div>
 
-                <!-- Structure Information -->
-                <div class="space-y-6">
-                    <div>
-                        <div class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <i data-lucide="align-left" class="size-4 text-slate-400"></i> HP String
-                        </div>
-                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner flex flex-wrap gap-0.5 hp-string-container" data-grid-id="grid-{{ forloop.counter }}">
-                            {% for char in struct.hp_string|make_list %}
-                                <span class="hp-char cursor-help px-1 rounded transition-colors duration-200 hover:bg-slate-600" data-index="{{ forloop.counter0 }}">{{ char }}</span>
-                            {% endfor %}
-                        </div>
+                <!-- Recommended Best Parameters -->
+                <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-200">
+                    <div class="flex items-center gap-2 mb-4">
+                        <i data-lucide="star" class="size-5 text-emerald-600"></i>
+                        <h4 class="text-lg font-bold text-emerald-900">Recommended Parameters for {{ struct.algorithm|default:"This Algorithm"|title }}</h4>
                     </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                            <div class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="zap" class="size-4"></i> Energy
-                            </div>
-                            <div class="text-3xl font-bold text-amber-600">{{ struct.energy }}</div>
-                        </div>
-                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                            <div class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="hash" class="size-4"></i> Length
-                            </div>
-                            <div class="text-3xl font-bold text-blue-600">{{ struct.structure|length }}</div>
-                        </div>
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {% if struct.best_params %}
+                            {% for param_name, param_value in struct.best_params.items %}
+                                {% if param_value != None %}
+                                <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-200 flex flex-col items-center shadow-sm hover:shadow-md transition-shadow">
+                                    <div class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                        {% if "Iterations" in param_name %}
+                                            <i data-lucide="repeat" class="size-4"></i>
+                                        {% elif "Temperature" in param_name and "Final" in param_name %}
+                                            <i data-lucide="thermometer-sun" class="size-4"></i>
+                                        {% elif "Temperature" in param_name or "Temp" in param_name %}
+                                            <i data-lucide="flame" class="size-4"></i>
+                                        {% elif "Replicas" in param_name %}
+                                            <i data-lucide="copy" class="size-4"></i>
+                                        {% elif "Swap" in param_name %}
+                                            <i data-lucide="shuffle" class="size-4"></i>
+                                        {% elif "T Min" in param_name or "T Max" in param_name %}
+                                            <i data-lucide="sliders-horizontal" class="size-4"></i>
+                                        {% elif "Episodes" in param_name %}
+                                            <i data-lucide="play" class="size-4"></i>
+                                        {% elif "Steps" in param_name %}
+                                            <i data-lucide="forward" class="size-4"></i>
+                                        {% else %}
+                                            <i data-lucide="settings" class="size-4"></i>
+                                        {% endif %}
+                                        {{ param_name }}
+                                    </div>
+                                    <div class="text-3xl font-extrabold text-emerald-600 mt-1 text-center">{{ param_value }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-sm text-slate-600 col-span-full">Algorithm parameters were used as configured.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -340,13 +547,20 @@
         <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8">
             <div class="p-6">
                 <div class="flex items-start gap-3">
-                    <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <i data-lucide="info" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
                     <div class="text-sm text-blue-900">
-                        <p class="font-medium mb-1">How does it work?</p>
-                        <p>
-                            Enter a protein sequence in FASTA format and click on "Predict GO" to obtain functional predictions
-                            of the protein based on Gene Ontology terms. You can also generate a 2D visualization of the structure.
-                        </p>
+                        <p class="font-medium mb-2">How does it work?</p>
+                        <ul class="space-y-2">
+                            <li>
+                                <span class="font-semibold">Predict GO:</span> Enter a protein sequence in FASTA format and click on "Predict GO" to obtain functional predictions of the protein based on Gene Ontology terms.
+                            </li>
+                            <li>
+                                <span class="font-semibold">Generate 2D Structure:</span> Click on "Generate 2D Structure" to visualize a 2D representation of the protein using optimization algorithms (Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange MC, or Q-Learning). Choose your algorithm and configure parameters for optimal results.
+                            </li>
+                            <li>
+                                <span class="font-semibold">Generate 3D Structure (AlphaFold):</span> Click on "Generate 3D Structure (AlphaFold)" to predict the complete 3D structure of your protein. The tool first searches the AlphaFold database, and if unavailable, uses ESMFold for real-time prediction.
+                            </li>
+                        </ul>
                     </div>
                 </div>
             </div>
@@ -465,6 +679,154 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // ===== Algorithm Selection Control =====
+    const generateBtn = document.getElementById('generate-2d-btn');
+    const algoSection = document.getElementById('algorithm-section');
+    const algoSeparator = document.getElementById('algorithm-separator');
+    const cancelBtn = document.getElementById('cancel-algo-btn');
+
+    // Show algorithm section when "Generate 2D Structure" is clicked
+    generateBtn.addEventListener('click', () => {
+        algoSection.classList.remove('hidden');
+        algoSeparator.classList.remove('hidden');
+        // Set default algorithm to "sa" if not selected
+        if (!document.querySelector('input[name="algorithm"]:checked')) {
+            document.querySelector('input[name="algorithm"][value="sa"]').checked = true;
+        }
+        // Scroll to algorithm section
+        algoSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    // Hide algorithm section when "Cancel" is clicked
+    cancelBtn.addEventListener('click', () => {
+        algoSection.classList.add('hidden');
+        algoSeparator.classList.add('hidden');
+    });
+
+    // ===== Parameter Visibility Control =====
+    const algoRadios = document.querySelectorAll('.algo-radio');
+    const algoParams = document.querySelectorAll('.algo-params');
+
+    function updateParameterVisibility(selectedAlgo) {
+        algoParams.forEach(params => {
+            const inputs = params.querySelectorAll('input[type="number"]');
+            if (params.dataset.algo === selectedAlgo) {
+                params.classList.remove('hidden');
+                // Enable inputs for visible parameters
+                inputs.forEach(input => {
+                    input.disabled = false;
+                });
+            } else {
+                params.classList.add('hidden');
+                // Disable inputs for hidden parameters so they don't get validated
+                inputs.forEach(input => {
+                    input.disabled = true;
+                });
+            }
+        });
+    }
+
+    algoRadios.forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            if (e.target.checked) {
+                updateParameterVisibility(e.target.dataset.algo);
+            }
+        });
+    });
+
+    // ===== LocalStorage Parameter Persistence =====
+    const STORAGE_KEY = 'protein_predictor_params';
+
+    function saveParametersToLocalStorage() {
+        const params = {
+            algorithm: document.querySelector('input[name="algorithm"]:checked')?.value || 'sa',
+            hc_iterations: document.querySelector('input[name="hc_iterations"]')?.value || '50000',
+            sa_iterations: document.querySelector('input[name="sa_iterations"]')?.value || '50000',
+            sa_initial_t: document.querySelector('input[name="sa_initial_t"]')?.value || '10.0',
+            sa_final_t: document.querySelector('input[name="sa_final_t"]')?.value || '0.01',
+            mc_iterations: document.querySelector('input[name="mc_iterations"]')?.value || '50000',
+            mc_temperature: document.querySelector('input[name="mc_temperature"]')?.value || '2.0',
+            remc_iterations: document.querySelector('input[name="remc_iterations"]')?.value || '50000',
+            remc_replicas: document.querySelector('input[name="remc_replicas"]')?.value || '5',
+            remc_swap: document.querySelector('input[name="remc_swap"]')?.value || '200',
+            remc_tmin: document.querySelector('input[name="remc_tmin"]')?.value || '1.0',
+            remc_tmax: document.querySelector('input[name="remc_tmax"]')?.value || '30.0',
+            ql_episodes: document.querySelector('input[name="ql_episodes"]')?.value || '100',
+            ql_steps: document.querySelector('input[name="ql_steps"]')?.value || '200'
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
+    }
+
+    function loadParametersFromLocalStorage() {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (!saved) return;
+
+        try {
+            const params = JSON.parse(saved);
+            
+            // Restore algorithm selection
+            if (params.algorithm) {
+                const algoRadio = document.querySelector(`input[name="algorithm"][value="${params.algorithm}"]`);
+                if (algoRadio) {
+                    algoRadio.checked = true;
+                }
+            }
+
+            // Restore all parameter values
+            const inputMappings = {
+                hc_iterations: 'hc_iterations',
+                sa_iterations: 'sa_iterations',
+                sa_initial_t: 'sa_initial_t',
+                sa_final_t: 'sa_final_t',
+                mc_iterations: 'mc_iterations',
+                mc_temperature: 'mc_temperature',
+                remc_iterations: 'remc_iterations',
+                remc_replicas: 'remc_replicas',
+                remc_swap: 'remc_swap',
+                remc_tmin: 'remc_tmin',
+                remc_tmax: 'remc_tmax',
+                ql_episodes: 'ql_episodes',
+                ql_steps: 'ql_steps'
+            };
+
+            for (const [paramName, inputName] of Object.entries(inputMappings)) {
+                const input = document.querySelector(`input[name="${inputName}"]`);
+                if (input && params[paramName]) {
+                    input.value = params[paramName];
+                }
+            }
+        } catch (e) {
+            console.log('Could not load saved parameters:', e);
+        }
+    }
+
+    // Add event listeners to all parameter inputs to save on change
+    document.querySelectorAll('input[name^="hc_"], input[name^="sa_"], input[name^="mc_"], input[name^="remc_"], input[name^="ql_"]').forEach(input => {
+        input.addEventListener('change', saveParametersToLocalStorage);
+        input.addEventListener('input', saveParametersToLocalStorage);
+    });
+
+    // Add event listener to algorithm radios to save on change
+    algoRadios.forEach(radio => {
+        radio.addEventListener('change', saveParametersToLocalStorage);
+    });
+
+    // Initialize parameter visibility on page load
+    loadParametersFromLocalStorage();
+    
+    const checkedRadio = document.querySelector('input[name="algorithm"]:checked');
+    if (checkedRadio) {
+        updateParameterVisibility(checkedRadio.dataset.algo);
+    } else {
+        // Disable all parameters initially
+        algoParams.forEach(params => {
+            const inputs = params.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.disabled = true;
+            });
+        });
+    }
+
     const tabButtons = document.querySelectorAll('.tab-button');
     const tabContents = document.querySelectorAll('.tab-content');
 
@@ -479,86 +841,129 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Function to draw SVG backbones
-    function drawBackbones() {
-        document.querySelectorAll('.protein-grid').forEach(grid => {
-            const svg = grid.querySelector('.backbone-svg');
-            if(!svg) return;
-            
-            svg.innerHTML = ''; // clear existing lines
-            const cells = Array.from(grid.querySelectorAll('.grid-cell')).sort((a,b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
-            
-            for(let i = 0; i < cells.length - 1; i++) {
-                const c1 = cells[i];
-                const c2 = cells[i+1];
-                
-                // Calculate center points relative to the grid container
-                const x1 = c1.offsetLeft + (c1.offsetWidth / 2);
-                const y1 = c1.offsetTop + (c1.offsetHeight / 2);
-                const x2 = c2.offsetLeft + (c2.offsetWidth / 2);
-                const y2 = c2.offsetTop + (c2.offsetHeight / 2);
-                
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
-                line.setAttribute('stroke', '#cbd5e1'); // slate-300
-                line.setAttribute('stroke-width', '2.5');
-                
-                svg.appendChild(line);
-            }
-        });
-    }
+    // SVG rendering for protein structures
+    const CELL = 32;   // px per grid unit
+    const R    = 13;   // node radius
+    const PAD  = 24;   // canvas padding
 
-    // Interactive Hover Sync
-    function setupInteractivity() {
-        const grids = document.querySelectorAll('.protein-grid');
-        grids.forEach(grid => {
-            const gridId = grid.id;
-            const container = document.querySelector(`.hp-string-container[data-grid-id="${gridId}"]`);
-            if(!container) return;
-            
-            const cells = grid.querySelectorAll('.grid-cell');
-            const chars = container.querySelectorAll('.hp-char');
-            
-            cells.forEach(cell => {
-                cell.addEventListener('mouseenter', () => {
-                    const idx = cell.dataset.index;
-                    cell.classList.add('active');
-                    if(chars[idx]) chars[idx].classList.add('active');
+    document.querySelectorAll('.protein-svg').forEach(svg => {
+        // Parse structure data embedded as a JSON-like string from Django
+        let rawData = svg.getAttribute('data-structure');
+        let points;
+        try {
+            // Django serialises dicts with single quotes; convert to valid JSON
+            rawData = rawData
+                .replace(/'/g, '"')
+                .replace(/True/g, 'true')
+                .replace(/False/g, 'false');
+            points = JSON.parse(rawData);
+        } catch(e) {
+            console.error('SVG parse error:', e, rawData);
+            return;
+        }
+        if (!points || points.length === 0) return;
+
+        // --- Compute bounds ---
+        const xs = points.map(p => p.x);
+        const ys = points.map(p => p.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+        const W = (maxX - minX) * CELL + 2 * PAD + 2 * R;
+        const H = (maxY - minY) * CELL + 2 * PAD + 2 * R;
+
+        svg.setAttribute('width',  W);
+        svg.setAttribute('height', H);
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+        const toSvgX = x => (x - minX) * CELL + PAD + R;
+        const toSvgY = y => (y - minY) * CELL + PAD + R;
+
+        const NS = 'http://www.w3.org/2000/svg';
+
+        // --- Draw backbone lines ---
+        for (let i = 0; i < points.length - 1; i++) {
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', toSvgX(points[i].x));
+            line.setAttribute('y1', toSvgY(points[i].y));
+            line.setAttribute('x2', toSvgX(points[i+1].x));
+            line.setAttribute('y2', toSvgY(points[i+1].y));
+            line.setAttribute('stroke', '#94a3b8');
+            line.setAttribute('stroke-width', '2.5');
+            line.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line);
+        }
+
+        // --- Draw nodes ---
+        points.forEach((p, idx) => {
+            const cx = toSvgX(p.x);
+            const cy = toSvgY(p.y);
+            const color = p.type === 'H' ? '#ef4444' : '#3b82f6';
+
+            const circle = document.createElementNS(NS, 'circle');
+            circle.setAttribute('cx', cx);
+            circle.setAttribute('cy', cy);
+            circle.setAttribute('r', R);
+            circle.setAttribute('fill', color);
+            circle.setAttribute('stroke', idx === 0 ? '#22c55e' : 'white');
+            circle.setAttribute('stroke-width', idx === 0 ? '3.5' : '1.5');
+            circle.setAttribute('data-index', idx);
+            circle.style.cursor = 'pointer';
+            circle.setAttribute('title', `#${idx+1} — ${p.type === 'H' ? 'Hydrophobic' : 'Polar'}`);
+            svg.appendChild(circle);
+
+            const text = document.createElementNS(NS, 'text');
+            text.setAttribute('x', cx);
+            text.setAttribute('y', cy + 4);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('font-size', '11');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('fill', 'white');
+            text.setAttribute('pointer-events', 'none');
+            text.textContent = p.type;
+            svg.appendChild(text);
+        });
+
+        // --- Hover sync with HP string ---
+        const svgId = svg.id;
+        const hpContainer = document.querySelector(`.hp-string-container[data-svg-id="${svgId}"]`);
+
+        svg.querySelectorAll('circle').forEach(circle => {
+            circle.addEventListener('mouseenter', () => {
+                const idx = circle.getAttribute('data-index');
+                circle.setAttribute('r', R + 3);
+                if (hpContainer) {
+                    const span = hpContainer.querySelector(`.hp-char[data-index="${idx}"]`);
+                    if (span) span.classList.add('bg-blue-500', 'text-white');
+                }
+            });
+            circle.addEventListener('mouseleave', () => {
+                const idx = circle.getAttribute('data-index');
+                circle.setAttribute('r', R);
+                if (hpContainer) {
+                    const span = hpContainer.querySelector(`.hp-char[data-index="${idx}"]`);
+                    if (span) span.classList.remove('bg-blue-500', 'text-white');
+                }
+            });
+        });
+
+        if (hpContainer) {
+            hpContainer.querySelectorAll('.hp-char').forEach(span => {
+                span.addEventListener('mouseenter', () => {
+                    const idx = span.getAttribute('data-index');
+                    const circle = svg.querySelector(`circle[data-index="${idx}"]`);
+                    if (circle) circle.setAttribute('r', R + 3);
+                    span.classList.add('bg-blue-500', 'text-white');
                 });
-                cell.addEventListener('mouseleave', () => {
-                    const idx = cell.dataset.index;
-                    cell.classList.remove('active');
-                    if(chars[idx]) chars[idx].classList.remove('active');
+                span.addEventListener('mouseleave', () => {
+                    const idx = span.getAttribute('data-index');
+                    const circle = svg.querySelector(`circle[data-index="${idx}"]`);
+                    if (circle) circle.setAttribute('r', R);
+                    span.classList.remove('bg-blue-500', 'text-white');
                 });
             });
-            
-            chars.forEach(char => {
-                char.addEventListener('mouseenter', () => {
-                    const idx = char.dataset.index;
-                    char.classList.add('active');
-                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
-                    if(cell) cell.classList.add('active');
-                });
-                char.addEventListener('mouseleave', () => {
-                    const idx = char.dataset.index;
-                    char.classList.remove('active');
-                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
-                    if(cell) cell.classList.remove('active');
-                });
-            });
-        });
-    }
-
-    // Initialize drawings
-    setTimeout(() => {
-        drawBackbones();
-        setupInteractivity();
-    }, 100);
-
-    window.addEventListener('resize', drawBackbones);
+        }
+    });
 });
 </script>
 {% endblock %}

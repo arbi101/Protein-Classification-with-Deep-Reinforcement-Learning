@@ -1,0 +1,40 @@
+=== Q-Learning Hyperparameter Tuning ===
+Protein: A1L190 (88 AA)
+Total Steps: 50000
+
+Testing Alpha: 0.1 | Gamma: 0.5 | Eps Decay: Fast (20%)
+  -> Best Energy: -9 | Avg: -6.0
+Testing Alpha: 0.1 | Gamma: 0.5 | Eps Decay: Slow (80%)
+  -> Best Energy: -6 | Avg: -5.7
+Testing Alpha: 0.1 | Gamma: 0.9 | Eps Decay: Fast (20%)
+  -> Best Energy: -9 | Avg: -6.3
+Testing Alpha: 0.1 | Gamma: 0.9 | Eps Decay: Slow (80%)
+  -> Best Energy: -9 | Avg: -7.7
+Testing Alpha: 0.1 | Gamma: 0.99 | Eps Decay: Fast (20%)
+  -> Best Energy: -9 | Avg: -7.0
+Testing Alpha: 0.1 | Gamma: 0.99 | Eps Decay: Slow (80%)
+  -> Best Energy: -8 | Avg: -6.3
+Testing Alpha: 0.5 | Gamma: 0.5 | Eps Decay: Fast (20%)
+  -> Best Energy: -6 | Avg: -5.0
+Testing Alpha: 0.5 | Gamma: 0.5 | Eps Decay: Slow (80%)
+  -> Best Energy: -8 | Avg: -7.0
+Testing Alpha: 0.5 | Gamma: 0.9 | Eps Decay: Fast (20%)
+  -> Best Energy: -7 | Avg: -5.7
+Testing Alpha: 0.5 | Gamma: 0.9 | Eps Decay: Slow (80%)
+  -> Best Energy: -9 | Avg: -7.3
+Testing Alpha: 0.5 | Gamma: 0.99 | Eps Decay: Fast (20%)
+  -> Best Energy: -8 | Avg: -5.7
+Testing Alpha: 0.5 | Gamma: 0.99 | Eps Decay: Slow (80%)
+  -> Best Energy: -8 | Avg: -6.3
+Testing Alpha: 0.9 | Gamma: 0.5 | Eps Decay: Fast (20%)
+  -> Best Energy: -7 | Avg: -6.7
+Testing Alpha: 0.9 | Gamma: 0.5 | Eps Decay: Slow (80%)
+  -> Best Energy: -9 | Avg: -8.3
+Testing Alpha: 0.9 | Gamma: 0.9 | Eps Decay: Fast (20%)
+  -> Best Energy: -4 | Avg: -3.0
+Testing Alpha: 0.9 | Gamma: 0.9 | Eps Decay: Slow (80%)
+  -> Best Energy: -8 | Avg: -7.3
+Testing Alpha: 0.9 | Gamma: 0.99 | Eps Decay: Fast (20%)
+  -> Best Energy: -8 | Avg: -6.0
+Testing Alpha: 0.9 | Gamma: 0.99 | Eps Decay: Slow (80%)
+  -> Best Energy: -8 | Avg: -8.0

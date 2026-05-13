@@ -1,0 +1,10 @@
+=== DQN Optimization Results ===
+
+
+Evaluating A1L190 - Length: 88 AA - H count: 36
+  -> DQN Best Energy: -3 | Time: 2320.24s
+
+Evaluating C9JLW8 - Length: 97 AA - H count: 28
+  -> DQN Best Energy: -1 | Time: 2840.78s
+
+Evaluating O00168 - Length: 92 AA - H count: 39

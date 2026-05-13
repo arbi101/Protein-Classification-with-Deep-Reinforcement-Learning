@@ -54,7 +54,7 @@
                 <hr class="my-6 border-slate-200">
 
                 <div class="mb-2">
-                    <h4 class="text-sm font-semibold text-slate-700 mb-3">Algorithm per la generazione 2D</h4>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-3">Algorithm for 2D Generation</h4>
                     <div class="flex flex-wrap gap-3">
                         <label class="cursor-pointer">
                             <input type="radio" name="algorithm" value="hc" class="hidden peer">
@@ -87,7 +87,7 @@
                             </div>
                         </label>
                     </div>
-                    <p class="text-xs text-slate-500 mt-3">Seleziona l'algoritmo per ottimizzare la struttura 2D · <span class="text-emerald-600 font-medium">Q-Learning è consigliato per proteine ≤ 25 AA</span></p>
+                    <p class="text-xs text-slate-500 mt-3">Select the algorithm to optimize the 2D structure · <span class="text-emerald-600 font-medium">Q-Learning is recommended for proteins ≤ 25 AA</span></p>
                 </div>
             </form>
         </div>
@@ -95,68 +95,73 @@
 
     {% if structures %}
         {% for struct in structures %}
-        <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8 overflow-hidden">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 mb-10 overflow-hidden">
             <div class="p-6 bg-gradient-to-r from-slate-50 to-purple-50 border-b border-slate-200">
                 <h3 class="text-xl font-bold flex items-center gap-2 text-slate-800">
                     <i data-lucide="network" class="size-5 text-purple-600"></i>
                     2D Structure: {{ struct.name }}
                 </h3>
             </div>
-            <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <!-- Structure Visualization -->
-                <div class="lg:col-span-2 flex flex-col items-center border-r border-slate-100 pr-0 lg:pr-8">
-                    <div class="protein-grid bg-slate-50 rounded-xl p-4 border border-slate-100 shadow-inner relative" id="grid-{{ forloop.counter }}">
-                        <!-- SVG container for lines -->
-                        <svg class="backbone-svg absolute top-0 left-0 w-full h-full pointer-events-none" style="z-index: 0;"></svg>
-                        
-                        {% for point in struct.structure %}
-                            <div class="grid-cell {{ point.type }} relative z-10 transition-all duration-200 cursor-help" 
-                                 style="grid-column: {{ point.x|add:10 }}; grid-row: {{ point.y|add:10 }};"
-                                 data-index="{{ forloop.counter0 }}"
-                                 data-grid-id="grid-{{ forloop.parentloop.counter }}"
-                                 title="Amino acid #{{ forloop.counter }} | Type: {% if point.type == 'H' %}Hydrophobic{% else %}Polar{% endif %}">
-                                {{ point.type }}
-                            </div>
-                        {% endfor %}
+
+            <!-- SVG Canvas: auto-fit, full width -->
+            <div class="p-6">
+                <div class="w-full bg-slate-50 rounded-xl border border-slate-100 shadow-inner overflow-auto">
+                    <svg id="svg-{{ forloop.counter }}" class="protein-svg block mx-auto"
+                         data-structure="{{ struct.structure|safe }}"
+                         style="min-width:200px; min-height:200px;">
+                    </svg>
+                </div>
+                <!-- Legend -->
+                <div class="mt-4 flex flex-wrap items-center justify-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-red-500 rounded-full shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">H — Hydrophobic</span>
                     </div>
-                    <div class="mt-6 flex items-center gap-6 bg-white px-6 py-3 rounded-full shadow-sm border border-slate-200">
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-red-500 rounded-full shadow-sm"></div>
-                            <span class="text-sm font-medium text-slate-700">H - Hydrophobic</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <div class="w-3 h-3 bg-blue-500 rounded-full shadow-sm"></div>
-                            <span class="text-sm font-medium text-slate-700">P - Polar</span>
-                        </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 bg-blue-500 rounded-full shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">P — Polar</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-white border-4 border-green-500 shadow"></div>
+                        <span class="text-sm font-medium text-slate-700">Start</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Structure Information -->
-                <div class="space-y-6">
-                    <div>
-                        <div class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <i data-lucide="align-left" class="size-4 text-slate-400"></i> HP String
-                        </div>
-                        <div class="font-mono text-sm bg-slate-800 text-slate-100 p-4 rounded-xl shadow-inner flex flex-wrap gap-0.5 hp-string-container" data-grid-id="grid-{{ forloop.counter }}">
-                            {% for char in struct.hp_string|make_list %}
-                                <span class="hp-char cursor-help px-1 rounded transition-colors duration-200 hover:bg-slate-600" data-index="{{ forloop.counter0 }}">{{ char }}</span>
-                            {% endfor %}
-                        </div>
+            <!-- Info panel: full width below canvas -->
+            <div class="border-t border-slate-100 p-6 bg-slate-50 space-y-5">
+                <!-- HP String -->
+                <div>
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                        <i data-lucide="align-left" class="size-4"></i> HP String
                     </div>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="bg-amber-50 rounded-xl p-4 border border-amber-100">
-                            <div class="text-xs font-semibold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="zap" class="size-4"></i> Energy
-                            </div>
-                            <div class="text-3xl font-bold text-amber-600">{{ struct.energy }}</div>
+                    <div class="font-mono text-sm bg-slate-800 text-slate-100 px-5 py-4 rounded-xl shadow-inner leading-relaxed flex flex-wrap gap-0.5 hp-string-container"
+                         data-svg-id="svg-{{ forloop.counter }}">
+                        {% for char in struct.hp_string|make_list %}
+                            <span class="hp-char cursor-pointer px-1 py-0.5 rounded transition-colors duration-150 hover:bg-slate-600"
+                                  data-index="{{ forloop.counter0 }}">{{ char }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="bg-amber-50 rounded-xl p-5 border border-amber-100 flex flex-col items-center">
+                        <div class="text-xs font-bold text-amber-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="zap" class="size-4"></i> Energy
                         </div>
-                        <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                            <div class="text-xs font-semibold text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                <i data-lucide="hash" class="size-4"></i> Length
-                            </div>
-                            <div class="text-3xl font-bold text-blue-600">{{ struct.structure|length }}</div>
+                        <div class="text-4xl font-extrabold text-amber-600 mt-1">{{ struct.energy }}</div>
+                    </div>
+                    <div class="bg-blue-50 rounded-xl p-5 border border-blue-100 flex flex-col items-center">
+                        <div class="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="hash" class="size-4"></i> Length
                         </div>
+                        <div class="text-4xl font-extrabold text-blue-600 mt-1">{{ struct.structure|length }}</div>
+                    </div>
+                    <div class="bg-purple-50 rounded-xl p-5 border border-purple-100 flex flex-col items-center col-span-2 md:col-span-1">
+                        <div class="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <i data-lucide="droplets" class="size-4"></i> H count
+                        </div>
+                        <div class="text-4xl font-extrabold text-purple-600 mt-1">{{ struct.hp_string|cut:"P"|length }}</div>
                     </div>
                 </div>
             </div>
@@ -187,67 +192,9 @@
                         {% endif %}
                         <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
                     </div>
-                    
-                    <!-- 3Dmol.js Viewer -->
-                    <div class="w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
-                         {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-pdb="{{ res.pdb_data }}"{% endif %}
-                         data-backgroundcolor="0x0f172a" 
-                         data-style="cartoon:color=spectrum">
-                    </div>
-                {% else %}
-                    <div class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-                        <i data-lucide="x-circle" class="size-8 text-red-500 mx-auto mb-2"></i>
-                        <h4 class="text-lg font-bold text-red-800 mb-1">Structure not found</h4>
-                        <p class="text-red-700">Could not find UniProt ID `{{ res.uniprot_id|default:"Unknown" }}` in the AlphaFold database for this sequence.</p>
-                        <p class="text-sm text-red-600 mt-2">Make sure the FASTA header contains a valid UniProt ID (e.g. >sp|P04637|...)</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-        {% endfor %}
-        
-        <!-- Import 3Dmol.js for rendering the 3D structures -->
-        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-    {% endif %}
-
-    {% if alphafold_results %}
-        <!-- Include 3Dmol.js Library -->
-        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
-        
-        {% for res in alphafold_results %}
-        <!-- AlphaFold Results Section -->
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100 transition-all hover:shadow-2xl mb-8">
-            <div class="border-b border-slate-100 bg-slate-50 p-6 flex items-center justify-between">
-                <div>
-                    <h3 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                        <i data-lucide="box" class="size-6 text-indigo-600"></i>
-                        {{ res.name }}
-                    </h3>
-                </div>
-                <div class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
-                    3D Structure Mapping
-                </div>
-            </div>
-            
-            <div class="p-6">
-                {% if res.pdb_url or res.pdb_data %}
-                    <div class="flex flex-col mb-4">
-                        {% if res.source == 'AlphaFold DB' %}
-                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <i data-lucide="check-circle" class="size-4 text-green-500"></i> Found in AlphaFold DB (UniProt: {{ res.uniprot_id }})
-                            </span>
-                        {% else %}
-                            <span class="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <i data-lucide="server" class="size-4 text-blue-500"></i> Generated via ESMFold API
-                            </span>
-                        {% endif %}
-                        <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
-                    </div>
-                    
-                    <!-- 3Dmol.js Viewer -->
                     <div class="viewer_3Dmoljs w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
                          {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-element="pdb_data_{{ forloop.counter }}" data-datatype="pdb"{% endif %}
-                         data-backgroundcolor="0x0f172a" 
+                         data-backgroundcolor="0x0f172a"
                          data-style="cartoon:color=spectrum">
                     </div>
                     {% if not res.pdb_url and res.pdb_data %}
@@ -257,164 +204,151 @@
                     <div class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
                         <i data-lucide="alert-triangle" class="size-8 text-red-500 mx-auto mb-3"></i>
                         <h4 class="text-lg font-semibold text-red-800 mb-2">3D Structure Generation Failed</h4>
-                        <p class="text-red-600">Could not generate a structure using ESMFold or find a match in AlphaFold DB. Check your sequence formatting.</p>
+                        <p class="text-red-600">Could not generate a structure using ESMFold or find a match in AlphaFold DB.</p>
                     </div>
                 {% endif %}
             </div>
         </div>
         {% endfor %}
+        <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
     {% endif %}
 
     {% if not structures and not alphafold_results %}
-        <!-- Info Footer -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8">
-            <div class="p-6">
-                <div class="flex items-start gap-3">
-                    <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
-                    <div class="text-sm text-blue-900">
-                        <p class="font-medium mb-1">How does it work?</p>
-                        <p>
-                            Enter a protein sequence in FASTA format to generate a 2D visualization of the structure
-                            using the Hydrophobic-Polar (HP) model.
-                        </p>
-                    </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8 p-6">
+            <div class="flex items-start gap-3">
+                <i data-lucide="alert-circle" class="size-5 text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <div class="text-sm text-blue-900">
+                    <p class="font-medium mb-1">How does it work?</p>
+                    <p>Enter a protein sequence in FASTA format to generate a 2D visualization using the HP model.</p>
                 </div>
             </div>
         </div>
     {% endif %}
 </div>
 
-<style>
-.protein-grid {
-    display: grid;
-    grid-template-columns: repeat(20, 30px);
-    grid-template-rows: repeat(20, 30px);
-    gap: 5px;
-    margin: 20px auto;
-    width: fit-content;
-}
-
-.grid-cell {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    font-weight: bold;
-    border-radius: 50%;
-}
-
-.grid-cell.H {
-    background-color: #ef4444;
-    color: white;
-}
-
-.grid-cell.P {
-    background-color: #3b82f6;
-    color: white;
-}
-
-.grid-cell.active {
-    transform: scale(1.15);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
-    z-index: 20;
-}
-
-.grid-cell[data-index="0"] {
-    border: 3px solid #22c55e; /* Green border for Start */
-}
-
-.hp-char.active {
-    background-color: #3b82f6;
-    color: white;
-    font-weight: bold;
-    transform: scale(1.1);
-}
-</style>
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Function to draw SVG backbones
-    function drawBackbones() {
-        document.querySelectorAll('.protein-grid').forEach(grid => {
-            const svg = grid.querySelector('.backbone-svg');
-            if(!svg) return;
-            
-            svg.innerHTML = ''; // clear existing lines
-            const cells = Array.from(grid.querySelectorAll('.grid-cell')).sort((a,b) => parseInt(a.dataset.index) - parseInt(b.dataset.index));
-            
-            for(let i = 0; i < cells.length - 1; i++) {
-                const c1 = cells[i];
-                const c2 = cells[i+1];
-                
-                // Calculate center points relative to the grid container
-                const x1 = c1.offsetLeft + (c1.offsetWidth / 2);
-                const y1 = c1.offsetTop + (c1.offsetHeight / 2);
-                const x2 = c2.offsetLeft + (c2.offsetWidth / 2);
-                const y2 = c2.offsetTop + (c2.offsetHeight / 2);
-                
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
-                line.setAttribute('stroke', '#cbd5e1'); // slate-300
-                line.setAttribute('stroke-width', '2.5');
-                
-                svg.appendChild(line);
-            }
-        });
-    }
+document.addEventListener('DOMContentLoaded', function () {
+    const CELL = 32;   // px per grid unit
+    const R    = 13;   // node radius
+    const PAD  = 24;   // canvas padding
 
-    // Interactive Hover Sync
-    function setupInteractivity() {
-        const grids = document.querySelectorAll('.protein-grid');
-        grids.forEach(grid => {
-            const gridId = grid.id;
-            const container = document.querySelector(`.hp-string-container[data-grid-id="${gridId}"]`);
-            if(!container) return;
-            
-            const cells = grid.querySelectorAll('.grid-cell');
-            const chars = container.querySelectorAll('.hp-char');
-            
-            cells.forEach(cell => {
-                cell.addEventListener('mouseenter', () => {
-                    const idx = cell.dataset.index;
-                    cell.classList.add('active');
-                    if(chars[idx]) chars[idx].classList.add('active');
+    document.querySelectorAll('.protein-svg').forEach(svg => {
+        // Parse structure data embedded as a JSON-like string from Django
+        let rawData = svg.getAttribute('data-structure');
+        let points;
+        try {
+            // Django serialises dicts with single quotes; convert to valid JSON
+            rawData = rawData
+                .replace(/'/g, '"')
+                .replace(/True/g, 'true')
+                .replace(/False/g, 'false');
+            points = JSON.parse(rawData);
+        } catch(e) {
+            console.error('SVG parse error:', e, rawData);
+            return;
+        }
+        if (!points || points.length === 0) return;
+
+        // --- Compute bounds ---
+        const xs = points.map(p => p.x);
+        const ys = points.map(p => p.y);
+        const minX = Math.min(...xs), maxX = Math.max(...xs);
+        const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+        const W = (maxX - minX) * CELL + 2 * PAD + 2 * R;
+        const H = (maxY - minY) * CELL + 2 * PAD + 2 * R;
+
+        svg.setAttribute('width',  W);
+        svg.setAttribute('height', H);
+        svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+        const toSvgX = x => (x - minX) * CELL + PAD + R;
+        const toSvgY = y => (y - minY) * CELL + PAD + R;
+
+        const NS = 'http://www.w3.org/2000/svg';
+
+        // --- Draw backbone lines ---
+        for (let i = 0; i < points.length - 1; i++) {
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', toSvgX(points[i].x));
+            line.setAttribute('y1', toSvgY(points[i].y));
+            line.setAttribute('x2', toSvgX(points[i+1].x));
+            line.setAttribute('y2', toSvgY(points[i+1].y));
+            line.setAttribute('stroke', '#94a3b8');
+            line.setAttribute('stroke-width', '2.5');
+            line.setAttribute('stroke-linecap', 'round');
+            svg.appendChild(line);
+        }
+
+        // --- Draw nodes ---
+        points.forEach((p, idx) => {
+            const cx = toSvgX(p.x);
+            const cy = toSvgY(p.y);
+            const color = p.type === 'H' ? '#ef4444' : '#3b82f6';
+
+            const circle = document.createElementNS(NS, 'circle');
+            circle.setAttribute('cx', cx);
+            circle.setAttribute('cy', cy);
+            circle.setAttribute('r', R);
+            circle.setAttribute('fill', color);
+            circle.setAttribute('stroke', idx === 0 ? '#22c55e' : 'white');
+            circle.setAttribute('stroke-width', idx === 0 ? '3.5' : '1.5');
+            circle.setAttribute('data-index', idx);
+            circle.style.cursor = 'pointer';
+            circle.setAttribute('title', `#${idx+1} — ${p.type === 'H' ? 'Hydrophobic' : 'Polar'}`);
+            svg.appendChild(circle);
+
+            const text = document.createElementNS(NS, 'text');
+            text.setAttribute('x', cx);
+            text.setAttribute('y', cy + 4);
+            text.setAttribute('text-anchor', 'middle');
+            text.setAttribute('font-size', '11');
+            text.setAttribute('font-weight', 'bold');
+            text.setAttribute('fill', 'white');
+            text.setAttribute('pointer-events', 'none');
+            text.textContent = p.type;
+            svg.appendChild(text);
+        });
+
+        // --- Hover sync with HP string ---
+        const svgId = svg.id;
+        const hpContainer = document.querySelector(`.hp-string-container[data-svg-id="${svgId}"]`);
+
+        svg.querySelectorAll('circle').forEach(circle => {
+            circle.addEventListener('mouseenter', () => {
+                const idx = circle.getAttribute('data-index');
+                circle.setAttribute('r', R + 3);
+                if (hpContainer) {
+                    const span = hpContainer.querySelector(`.hp-char[data-index="${idx}"]`);
+                    if (span) span.classList.add('bg-blue-500', 'text-white');
+                }
+            });
+            circle.addEventListener('mouseleave', () => {
+                const idx = circle.getAttribute('data-index');
+                circle.setAttribute('r', R);
+                if (hpContainer) {
+                    const span = hpContainer.querySelector(`.hp-char[data-index="${idx}"]`);
+                    if (span) span.classList.remove('bg-blue-500', 'text-white');
+                }
+            });
+        });
+
+        if (hpContainer) {
+            hpContainer.querySelectorAll('.hp-char').forEach(span => {
+                span.addEventListener('mouseenter', () => {
+                    const idx = span.getAttribute('data-index');
+                    const circle = svg.querySelector(`circle[data-index="${idx}"]`);
+                    if (circle) circle.setAttribute('r', R + 3);
+                    span.classList.add('bg-blue-500', 'text-white');
                 });
-                cell.addEventListener('mouseleave', () => {
-                    const idx = cell.dataset.index;
-                    cell.classList.remove('active');
-                    if(chars[idx]) chars[idx].classList.remove('active');
+                span.addEventListener('mouseleave', () => {
+                    const idx = span.getAttribute('data-index');
+                    const circle = svg.querySelector(`circle[data-index="${idx}"]`);
+                    if (circle) circle.setAttribute('r', R);
+                    span.classList.remove('bg-blue-500', 'text-white');
                 });
             });
-            
-            chars.forEach(char => {
-                char.addEventListener('mouseenter', () => {
-                    const idx = char.dataset.index;
-                    char.classList.add('active');
-                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
-                    if(cell) cell.classList.add('active');
-                });
-                char.addEventListener('mouseleave', () => {
-                    const idx = char.dataset.index;
-                    char.classList.remove('active');
-                    const cell = grid.querySelector(`.grid-cell[data-index="${idx}"]`);
-                    if(cell) cell.classList.remove('active');
-                });
-            });
-        });
-    }
-
-    // Initialize drawings
-    setTimeout(() => {
-        drawBackbones();
-        setupInteractivity();
-    }, 100);
-
-    window.addEventListener('resize', drawBackbones);
-});
+        }
+    });
 </script>
 {% endblock %}
