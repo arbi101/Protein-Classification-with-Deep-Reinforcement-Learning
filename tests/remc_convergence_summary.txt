@@ -3,17 +3,121 @@ Testing 20 proteins over iterations [1000, 10000, 50000, 100000]
 
 
 Evaluating A1L190 - Length: 88 AA - H count: 36
-  [Iterations: 1000] -> Best Energy: -9   | Avg: -9.0   | Avg Time: 0.092 s
-  [Iterations: 10000] -> Best Energy: -13  | Avg: -12.7  | Avg Time: 0.897 s
-  [Iterations: 50000] -> Best Energy: -16  | Avg: -14.3  | Avg Time: 4.432 s
-  [Iterations: 100000] -> Best Energy: -15  | Avg: -14.7  | Avg Time: 8.836 s
+  [Iterations: 1000] -> Best Energy: -10  | Avg: -9.7   | Avg Time: 0.227 s
+  [Iterations: 10000] -> Best Energy: -22  | Avg: -21.3  | Avg Time: 2.365 s
+  [Iterations: 50000] -> Best Energy: -23  | Avg: -22.3  | Avg Time: 11.720 s
+  [Iterations: 100000] -> Best Energy: -25  | Avg: -24.3  | Avg Time: 23.341 s
 
 Evaluating C9JLW8 - Length: 97 AA - H count: 28
-  [Iterations: 1000] -> Best Energy: -7   | Avg: -6.3   | Avg Time: 0.088 s
-  [Iterations: 10000] -> Best Energy: -10  | Avg: -9.0   | Avg Time: 0.856 s
-  [Iterations: 50000] -> Best Energy: -10  | Avg: -10.0  | Avg Time: 4.318 s
-  [Iterations: 100000] -> Best Energy: -11  | Avg: -10.7  | Avg Time: 8.582 s
+  [Iterations: 1000] -> Best Energy: -7   | Avg: -6.3   | Avg Time: 0.211 s
+  [Iterations: 10000] -> Best Energy: -15  | Avg: -15.0  | Avg Time: 2.232 s
+  [Iterations: 50000] -> Best Energy: -19  | Avg: -18.7  | Avg Time: 11.293 s
+  [Iterations: 100000] -> Best Energy: -20  | Avg: -19.0  | Avg Time: 21.952 s
 
 Evaluating O00168 - Length: 92 AA - H count: 39
-  [Iterations: 1000] -> Best Energy: -16  | Avg: -13.3  | Avg Time: 0.098 s
-  [Iterations: 10000] -> Best Energy: -18  | Avg: -17.0  | Avg Time: 0.958 s
+  [Iterations: 1000] -> Best Energy: -15  | Avg: -12.7  | Avg Time: 0.239 s
+  [Iterations: 10000] -> Best Energy: -24  | Avg: -22.7  | Avg Time: 2.482 s
+  [Iterations: 50000] -> Best Energy: -28  | Avg: -26.3  | Avg Time: 12.158 s
+  [Iterations: 100000] -> Best Energy: -27  | Avg: -26.7  | Avg Time: 24.768 s
+
+Evaluating O00453 - Length: 97 AA - H count: 40
+  [Iterations: 1000] -> Best Energy: -11  | Avg: -10.3  | Avg Time: 0.250 s
+  [Iterations: 10000] -> Best Energy: -23  | Avg: -22.0  | Avg Time: 2.524 s
+  [Iterations: 50000] -> Best Energy: -27  | Avg: -25.3  | Avg Time: 12.591 s
+  [Iterations: 100000] -> Best Energy: -26  | Avg: -25.0  | Avg Time: 24.843 s
+
+Evaluating O14949 - Length: 82 AA - H count: 34
+  [Iterations: 1000] -> Best Energy: -13  | Avg: -10.3  | Avg Time: 0.222 s
+  [Iterations: 10000] -> Best Energy: -20  | Avg: -19.7  | Avg Time: 2.334 s
+  [Iterations: 50000] -> Best Energy: -23  | Avg: -22.3  | Avg Time: 11.401 s
+  [Iterations: 100000] -> Best Energy: -23  | Avg: -23.0  | Avg Time: 22.488 s
+
+Evaluating O14957 - Length: 56 AA - H count: 29
+  [Iterations: 1000] -> Best Energy: -13  | Avg: -12.7  | Avg Time: 0.177 s
+  [Iterations: 10000] -> Best Energy: -19  | Avg: -18.3  | Avg Time: 1.732 s
+  [Iterations: 50000] -> Best Energy: -22  | Avg: -20.7  | Avg Time: 8.624 s
+  [Iterations: 100000] -> Best Energy: -22  | Avg: -21.3  | Avg Time: 16.913 s
+
+Evaluating O15263 - Length: 64 AA - H count: 33
+  [Iterations: 1000] -> Best Energy: -16  | Avg: -14.3  | Avg Time: 0.195 s
+  [Iterations: 10000] -> Best Energy: -21  | Avg: -20.7  | Avg Time: 1.939 s
+  [Iterations: 50000] -> Best Energy: -23  | Avg: -22.0  | Avg Time: 9.690 s
+  [Iterations: 100000] -> Best Energy: -26  | Avg: -24.0  | Avg Time: 19.104 s
+
+Evaluating O43715 - Length: 76 AA - H count: 26
+  [Iterations: 1000] -> Best Energy: -9   | Avg: -8.3   | Avg Time: 0.187 s
+  [Iterations: 10000] -> Best Energy: -19  | Avg: -16.7  | Avg Time: 1.916 s
+  [Iterations: 50000] -> Best Energy: -19  | Avg: -19.0  | Avg Time: 9.521 s
+  [Iterations: 100000] -> Best Energy: -20  | Avg: -19.3  | Avg Time: 19.115 s
+
+Evaluating O75438 - Length: 58 AA - H count: 27
+  [Iterations: 1000] -> Best Energy: -10  | Avg: -9.3   | Avg Time: 0.169 s
+  [Iterations: 10000] -> Best Energy: -15  | Avg: -14.0  | Avg Time: 1.673 s
+  [Iterations: 50000] -> Best Energy: -16  | Avg: -15.3  | Avg Time: 8.377 s
+  [Iterations: 100000] -> Best Energy: -17  | Avg: -16.3  | Avg Time: 16.446 s
+
+Evaluating O95777 - Length: 96 AA - H count: 41
+  [Iterations: 1000] -> Best Energy: -14  | Avg: -12.0  | Avg Time: 0.249 s
+  [Iterations: 10000] -> Best Energy: -23  | Avg: -21.7  | Avg Time: 2.541 s
+  [Iterations: 50000] -> Best Energy: -28  | Avg: -27.0  | Avg Time: 12.655 s
+  [Iterations: 100000] -> Best Energy: -27  | Avg: -26.7  | Avg Time: 24.944 s
+
+Evaluating P04080 - Length: 98 AA - H count: 38
+  [Iterations: 1000] -> Best Energy: -11  | Avg: -10.0  | Avg Time: 0.245 s
+  [Iterations: 10000] -> Best Energy: -20  | Avg: -19.3  | Avg Time: 2.473 s
+  [Iterations: 50000] -> Best Energy: -24  | Avg: -23.7  | Avg Time: 11.993 s
+  [Iterations: 100000] -> Best Energy: -26  | Avg: -24.7  | Avg Time: 23.562 s
+
+Evaluating P04155 - Length: 84 AA - H count: 39
+  [Iterations: 1000] -> Best Energy: -13  | Avg: -12.7  | Avg Time: 0.236 s
+  [Iterations: 10000] -> Best Energy: -22  | Avg: -21.3  | Avg Time: 2.383 s
+  [Iterations: 50000] -> Best Energy: -25  | Avg: -25.0  | Avg Time: 11.792 s
+  [Iterations: 100000] -> Best Energy: -28  | Avg: -27.0  | Avg Time: 23.609 s
+
+Evaluating P04731 - Length: 61 AA - H count: 28
+  [Iterations: 1000] -> Best Energy: -11  | Avg: -10.3  | Avg Time: 0.175 s
+  [Iterations: 10000] -> Best Energy: -17  | Avg: -16.7  | Avg Time: 1.749 s
+  [Iterations: 50000] -> Best Energy: -18  | Avg: -17.7  | Avg Time: 8.794 s
+  [Iterations: 100000] -> Best Energy: -18  | Avg: -18.0  | Avg Time: 17.280 s
+
+Evaluating P05204 - Length: 90 AA - H count: 20
+  [Iterations: 1000] -> Best Energy: -5   | Avg: -4.3   | Avg Time: 0.184 s
+  [Iterations: 10000] -> Best Energy: -10  | Avg: -9.3   | Avg Time: 1.861 s
+  [Iterations: 50000] -> Best Energy: -12  | Avg: -12.0  | Avg Time: 9.220 s
+  [Iterations: 100000] -> Best Energy: -13  | Avg: -12.7  | Avg Time: 18.680 s
+
+Evaluating P06028 - Length: 91 AA - H count: 48
+  [Iterations: 1000] -> Best Energy: -17  | Avg: -16.3  | Avg Time: 0.268 s
+  [Iterations: 10000] -> Best Energy: -29  | Avg: -28.0  | Avg Time: 2.677 s
+  [Iterations: 50000] -> Best Energy: -32  | Avg: -31.3  | Avg Time: 13.076 s
+  [Iterations: 100000] -> Best Energy: -32  | Avg: -32.0  | Avg Time: 25.471 s
+
+Evaluating P07438 - Length: 61 AA - H count: 29
+  [Iterations: 1000] -> Best Energy: -12  | Avg: -11.3  | Avg Time: 0.179 s
+  [Iterations: 10000] -> Best Energy: -19  | Avg: -18.0  | Avg Time: 1.797 s
+  [Iterations: 50000] -> Best Energy: -20  | Avg: -19.0  | Avg Time: 8.972 s
+  [Iterations: 100000] -> Best Energy: -21  | Avg: -20.3  | Avg Time: 17.540 s
+
+Evaluating P10176 - Length: 69 AA - H count: 32
+  [Iterations: 1000] -> Best Energy: -16  | Avg: -13.7  | Avg Time: 0.201 s
+  [Iterations: 10000] -> Best Energy: -22  | Avg: -21.0  | Avg Time: 2.020 s
+  [Iterations: 50000] -> Best Energy: -23  | Avg: -22.3  | Avg Time: 10.038 s
+  [Iterations: 100000] -> Best Energy: -25  | Avg: -23.7  | Avg Time: 20.181 s
+
+Evaluating P29034 - Length: 98 AA - H count: 42
+  [Iterations: 1000] -> Best Energy: -15  | Avg: -13.3  | Avg Time: 0.255 s
+  [Iterations: 10000] -> Best Energy: -23  | Avg: -22.3  | Avg Time: 2.592 s
+  [Iterations: 50000] -> Best Energy: -29  | Avg: -28.0  | Avg Time: 12.796 s
+  [Iterations: 100000] -> Best Energy: -30  | Avg: -28.7  | Avg Time: 25.583 s
+
+Evaluating P33763 - Length: 92 AA - H count: 36
+  [Iterations: 1000] -> Best Energy: -12  | Avg: -10.7  | Avg Time: 0.234 s
+  [Iterations: 10000] -> Best Energy: -23  | Avg: -22.3  | Avg Time: 2.434 s
+  [Iterations: 50000] -> Best Energy: -24  | Avg: -23.7  | Avg Time: 12.117 s
+  [Iterations: 100000] -> Best Energy: -26  | Avg: -25.3  | Avg Time: 24.172 s
+
+Evaluating P35321 - Length: 89 AA - H count: 18
+  [Iterations: 1000] -> Best Energy: -3   | Avg: -2.3   | Avg Time: 0.177 s
+  [Iterations: 10000] -> Best Energy: -5   | Avg: -5.0   | Avg Time: 1.819 s
+  [Iterations: 50000] -> Best Energy: -8   | Avg: -7.3   | Avg Time: 9.100 s
+  [Iterations: 100000] -> Best Energy: -8   | Avg: -7.7   | Avg Time: 18.172 s

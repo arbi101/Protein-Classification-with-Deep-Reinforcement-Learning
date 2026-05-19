@@ -8,7 +8,32 @@ This script:
   2. Trains a SHARED DQN agent across all proteins (transfer learning)
   3. Saves the trained weights to 'dqn_weights.pth' after each protein
   4. Logs the best energy and training time per protein to 'dqn_results.txt'
-
+ACTION SPACE DESIGN (Why these 4 moves?):
+  The agent's action space consists of 4 local structural moves, each selected
+  from the protein folding literature (Cebián et al., 2012) and proven effective
+  for 2D HP lattice protein folding:
+  
+  1. END_FLIP    : Move a terminal residue to a free adjacent site of its anchor.
+                   Efficient for extending the chain; low computational cost.
+                   
+  2. KINK_JUMP   : Flip an internal corner residue (kink) to the opposite corner.
+                   Preserves backbone connectivity; enables local optimizations.
+                   
+  3. CRANKSHAFT  : Rotate two consecutive internal residues in a U-shaped motif.
+                   High probability of acceptance in valid conformations; effective
+                   for rearranging hydrophobic cores.
+                   
+  4. PIVOT       : Rotate a tail of residues ±90° or 180° around a pivot point.
+                   Global move with lower acceptance but high impact when valid.
+                   Helps escape local minima.
+  
+  This set balances LOCAL MOVES (end_flip, kink_jump, crankshaft) for fine-tuning
+  with GLOBAL MOVES (pivot) for escaping local minima. The randomness in:
+    - Move TYPE selection (which move to attempt)
+    - Move PARAMETER selection (which residue, which direction/angle)
+    - State TRANSITIONS (from experience replay)
+  is essential for RL exploration—the agent must sample diverse conformations
+  to learn effective folding policies.
 Note on the shared agent approach:
   A single DQNAgent is reused across all proteins. The REPLAY BUFFER is
   cleared between proteins (because different proteins produce grids of

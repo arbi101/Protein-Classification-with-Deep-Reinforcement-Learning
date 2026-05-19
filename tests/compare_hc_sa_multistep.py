@@ -34,7 +34,7 @@ def main():
     
     # We will test convergence across different iteration levels
     iterations_list = [1000, 10000, 50000, 100000]
-    n_runs = 10
+    n_runs = 25  # Increased from 10 to 25 for better statistical significance
     
     print(f"\nStarting tests across iterations: {iterations_list} ({n_runs} runs per algorithm/level)")
     
@@ -76,7 +76,9 @@ def main():
                 
                 # Run SA
                 start = time.time()
-                _, sa_en = run_sa(hp_str, iterations=iters)
+                # Aggressive cooling schedule: initial_t=30.0, final_t=0.001
+                # This gives SA more exploration time to escape local minima
+                _, sa_en = run_sa(hp_str, iterations=iters, initial_t=30.0, final_t=0.001)
                 sa_t = time.time() - start
                 sa_times.append(sa_t)
                 sa_energies.append(sa_en)
@@ -84,7 +86,7 @@ def main():
                 
                 # Run Basic MC
                 start = time.time()
-                _, mc_en = run_mc(hp_str, iterations=iters, temperature=2.0)
+                _, mc_en = run_mc(hp_str, iterations=iters, temperature=5.0)
                 mc_t = time.time() - start
                 mc_times.append(mc_t)
                 mc_energies.append(mc_en)

@@ -175,14 +175,14 @@ def predict_go(request):
                 try:
                     hc_iterations   = int(request.POST.get('hc_iterations', 50000))
                     sa_iterations   = int(request.POST.get('sa_iterations', 50000))
-                    sa_initial_t    = float(request.POST.get('sa_initial_t', 10.0))
-                    sa_final_t      = float(request.POST.get('sa_final_t', 0.01))
+                    sa_initial_t    = float(request.POST.get('sa_initial_t', 30.0))
+                    sa_final_t      = float(request.POST.get('sa_final_t', 0.001))
                     mc_iterations   = int(request.POST.get('mc_iterations', 50000))
                     mc_temperature  = float(request.POST.get('mc_temperature', 2.0))
                     remc_iterations = int(request.POST.get('remc_iterations', 50000))
                     remc_replicas   = int(request.POST.get('remc_replicas', 5))
                     remc_swap       = int(request.POST.get('remc_swap', 200))
-                    remc_tmin       = float(request.POST.get('remc_tmin', 1.0))
+                    remc_tmin       = float(request.POST.get('remc_tmin', 0.1))
                     remc_tmax       = float(request.POST.get('remc_tmax', 30.0))
                     ql_episodes     = int(request.POST.get('ql_episodes', 100))
                     ql_steps        = int(request.POST.get('ql_steps', 200))
@@ -190,9 +190,9 @@ def predict_go(request):
                     # If any value is invalid, fall back to safe defaults
                     error_message = "Invalid hyperparameter values. Using defaults."
                     hc_iterations = sa_iterations = mc_iterations = remc_iterations = 50000
-                    sa_initial_t = 10.0;  sa_final_t = 0.01
+                    sa_initial_t = 30.0;  sa_final_t = 0.001
                     mc_temperature = 2.0; remc_replicas = 5; remc_swap = 200
-                    remc_tmin = 1.0;      remc_tmax = 30.0
+                    remc_tmin = 0.1;      remc_tmax = 30.0
                     ql_episodes = 100;    ql_steps = 200
 
                 if sequences:
@@ -255,9 +255,9 @@ def predict_go(request):
                         # Build a dict of the recommended "best" parameters per algorithm
                         best_params = {}
                         if   algorithm == 'hc':   best_params = {'Iterations': 50000}
-                        elif algorithm == 'sa':   best_params = {'Iterations': 50000, 'Temperature': '10.0', 'Final Temperature': '0.01'}
+                        elif algorithm == 'sa':   best_params = {'Iterations': 50000, 'Temperature': '30.0', 'Final Temperature': '0.001'}
                         elif algorithm == 'mc':   best_params = {'Iterations': 50000, 'Temperature': '2.0'}
-                        elif algorithm == 'remc': best_params = {'Iterations': 50000, 'Replicas': 5, 'Swap Interval': 200, 'T Min': '1.0', 'T Max': '30.0'}
+                        elif algorithm == 'remc': best_params = {'Iterations': 50000, 'Replicas': 5, 'Swap Interval': 200, 'T Min': '0.1', 'T Max': '30.0'}
                         elif algorithm == 'ql':   best_params = {'Episodes': 100, 'Steps per Episode': 200}
 
                         structures.append({

@@ -1,3 +1,42 @@
+"""
+colab_dqn.py
+-----------
+DQN agent implementation for 2D HP protein folding (standalone executable).
+
+This module provides:
+  - DQNCNN: Convolutional neural network for Q-function approximation
+  - ReplayBuffer: Experience replay for stable training
+  - DQNAgent: Main agent class managing policy/target networks and training
+  - Core folding utilities: move application, energy calculation, grid encoding
+
+ACTION SPACE DESIGN (Why these 4 moves?):
+  The agent's action space consists of 4 established structural moves from
+  protein folding literature, proven effective for 2D HP lattice models:
+  
+  1. END_FLIP    : Move a terminal residue to a free adjacent site of its anchor.
+                   Efficient for extending the chain; low computational cost.
+                   
+  2. KINK_JUMP   : Flip an internal corner residue (kink) to the opposite corner.
+                   Preserves backbone connectivity; enables local optimizations.
+                   
+  3. CRANKSHAFT  : Rotate two consecutive internal residues in a U-shaped motif.
+                   High probability of acceptance in valid conformations; effective
+                   for rearranging hydrophobic cores.
+                   
+  4. PIVOT       : Rotate a tail of residues ±90° or 180° around a pivot point.
+                   Global move with lower acceptance but high impact when valid.
+                   Helps escape local minima.
+  
+  This set balances LOCAL MOVES (end_flip, kink_jump, crankshaft) for fine-tuning
+  with GLOBAL MOVES (pivot) for escaping local minima. The randomness in:
+    - Move TYPE selection (which move to attempt)
+    - Move PARAMETER selection (which residue, which direction/angle)
+    - ε-greedy exploration (explore vs exploit via policy network)
+    - Experience replay sampling (random mini-batch training)
+  is essential for DQN exploration—the agent must sample diverse conformations
+  and trajectories to learn effective folding policies and avoid local optima.
+"""
+
 import torch
 import torch.nn as nn
 import torch.optim as optim

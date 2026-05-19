@@ -12,6 +12,7 @@ configurations (which explore broadly), greatly improving the sampling
 of the energy landscape and the quality of the final minimum found.
 """
 
+import enum
 import math
 import random
 import time
@@ -35,11 +36,17 @@ def sequence_to_hp(sequence):
 
 
 def generate_2d_structure_remc(hp_string, iterations=300_000,
-                                num_replicas=10, t_min=1.0, t_max=30.0,
+                                num_replicas=10, t_min=0.1, t_max=30.0,
                                 swap_interval=200):
     """
     Generates an approximate minimum-energy 2D protein conformation using
-    Replica Exchange Monte Carlo with pivot moves.
+    Replica Exchange Monte Carlo (Parallel Tempering).
+
+    REMC runs multiple independent MC simulations (replicas) in parallel,
+    each at a different temperature. Periodically, adjacent replicas attempt
+    to exchange their conformations based on a Metropolis criterion. Uses the
+    same 4 move types as HC/SA/MC for fair comparison: end_flip, kink_jump,
+    crankshaft, and pivot.
 
     Parameters
     ----------
@@ -111,37 +118,105 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
     for step in range(1, iterations + 1):
 
         # ── Local MC step for EACH replica ───────────────────────────────
-        # Every replica performs one independent pivot-move MC step at its
-        # own temperature. This is the "standard MC" part of REMC.
+        # Every replica performs one independent MC move at its own temperature.
+        # Uses the same 4 move types as HC/SA/MC for fair comparison.
         for i in range(num_replicas):
-            # ── Pivot move proposal ───────────────────────────────────────
-            # Select a random pivot residue (not first or last)
-            pivot_idx = random.randint(1, len(hp_string) - 2)
-            # Use only ±90° pivots (more stable than 180° for compact chains)
-            angle = random.choice([90, -90])
-            cx, cy = replicas_pos[i][pivot_idx]  # pivot centre
+            if len(hp_string) <= 2:
+                # Chains too short → no optimization possible
+                break
+
+            # ── Move selection ─────────────────────────────────────────────
+            # Choose one of 4 move types with weighted probabilities
+            move_types = ['end_flip', 'kink_jump', 'crankshaft', 'pivot']
+            move = random.choices(move_types, weights=[0.2, 0.3, 0.3, 0.2])[0]
 
             # Make a working copy of this replica's positions
             new_positions = list(replicas_pos[i])
+            valid_move = False
 
-            # Set rotation matrix coefficients for ±90°
-            cos_a, sin_a = (0, 1) if angle == 90 else (0, -1)
+            # ── END-FLIP move ──────────────────────────────────────────────
+            if move == 'end_flip':
+                idx = random.choice([0, len(hp_string) - 1])
+                anchor_idx = 1 if idx == 0 else len(hp_string) - 2
+                ax, ay = replicas_pos[i][anchor_idx]
 
-            # Rotate all residues after the pivot around the pivot centre
-            for k in range(pivot_idx + 1, len(hp_string)):
-                x, y = current = replicas_pos[i][k]
-                tx, ty = x - cx, y - cy          # translate to pivot origin
-                rx = tx * cos_a - ty * sin_a      # rotate x-component
-                ry = tx * sin_a + ty * cos_a      # rotate y-component
-                new_positions[k] = (rx + cx, ry + cy)  # translate back
+                possible_moves = []
+                for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+                    nx, ny = ax + dx, ay + dy
+                    if (nx, ny) not in replicas_pos[i] and (nx, ny) != replicas_pos[i][idx]:
+                        possible_moves.append((nx, ny))
 
-            # ── Acceptance check ──────────────────────────────────────────
-            # The pivot is valid only if the resulting chain has no overlaps
-            if len(set(new_positions)) == len(new_positions):
+                if possible_moves:
+                    new_positions[idx] = random.choice(possible_moves)
+                    valid_move = True
+
+            # ── KINK-JUMP move ────────────────────────────────────────────
+            elif move == 'kink_jump':
+                if len(hp_string) > 2:
+                    idx = random.randint(1, len(hp_string) - 2)
+                    p_prev = replicas_pos[i][idx - 1]
+                    p_curr = replicas_pos[i][idx]
+                    p_next = replicas_pos[i][idx + 1]
+
+                    dx = abs(p_prev[0] - p_next[0])
+                    dy = abs(p_prev[1] - p_next[1])
+                    if dx == 1 and dy == 1:
+                        nx = p_prev[0] + p_next[0] - p_curr[0]
+                        ny = p_prev[1] + p_next[1] - p_curr[1]
+                        if (nx, ny) not in replicas_pos[i]:
+                            new_positions[idx] = (nx, ny)
+                            valid_move = True
+
+            # ── CRANKSHAFT move ───────────────────────────────────────────
+            elif move == 'crankshaft':
+                if len(hp_string) > 3:
+                    idx = random.randint(1, len(hp_string) - 3)
+                    p_prev  = replicas_pos[i][idx - 1]
+                    p_curr  = replicas_pos[i][idx]
+                    p_next  = replicas_pos[i][idx + 1]
+                    p_next2 = replicas_pos[i][idx + 2]
+
+                    dist_sq = (p_prev[0] - p_next2[0])**2 + (p_prev[1] - p_next2[1])**2
+                    if dist_sq == 1:
+                        nx_curr = p_prev[0] + p_next2[0] - p_next[0]
+                        ny_curr = p_prev[1] + p_next2[1] - p_next[1]
+                        nx_next = p_prev[0] + p_next2[0] - p_curr[0]
+                        ny_next = p_prev[1] + p_next2[1] - p_curr[1]
+
+                        if (nx_curr, ny_curr) not in replicas_pos[i] and \
+                           (nx_next, ny_next) not in replicas_pos[i]:
+                            new_positions[idx]     = (nx_curr, ny_curr)
+                            new_positions[idx + 1] = (nx_next, ny_next)
+                            valid_move = True
+
+            # ── PIVOT move ─────────────────────────────────────────────────
+            elif move == 'pivot':
+                pivot_idx = random.randint(1, len(hp_string) - 2)
+                angle = random.choice([90, -90, 180])
+                cx, cy = replicas_pos[i][pivot_idx]
+
+                if angle == 90:
+                    cos_a, sin_a = 0, 1
+                elif angle == -90:
+                    cos_a, sin_a = 0, -1
+                else:
+                    cos_a, sin_a = -1, 0
+
+                for k in range(pivot_idx + 1, len(hp_string)):
+                    x, y = replicas_pos[i][k]
+                    tx, ty = x - cx, y - cy
+                    rx = tx * cos_a - ty * sin_a
+                    ry = tx * sin_a + ty * cos_a
+                    new_positions[k] = (rx + cx, ry + cy)
+
+                if len(set(new_positions)) == len(new_positions):
+                    valid_move = True
+
+            # ── Metropolis acceptance criterion at this replica's temperature ─
+            if valid_move:
                 new_energy = calculate_energy(new_positions)
 
-                # Metropolis criterion at this replica's temperature temps[i]:
-                # Accept if energy improves, or with probability exp(-ΔE / T)
+                # Accept if energy improves or with probability exp(-ΔE / T)
                 delta_e = new_energy - replicas_en[i]
                 if delta_e <= 0 or random.random() < math.exp(-delta_e / temps[i]):
                     replicas_pos[i] = new_positions   # update replica conformation
@@ -196,6 +271,6 @@ if __name__ == "__main__":
     print(f"HP String: {hp_str}")
 
     start = time.time()
-    # Run REMC with 300,000 steps — default 10 replicas between T=1.0 and T=30.0
-    _, energy = generate_2d_structure_remc(hp_str, iterations=300_000)
+    # Run REMC with 300,000 steps — default 20 replicas between T=0.1 and T=30.0
+    _, energy = generate_2d_structure_remc(hp_str, iterations=300_000, num_replicas=20, t_min=0.1)
     print(f"Best Energy found: {energy} (Time: {time.time()-start:.2f} s)")

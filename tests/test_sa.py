@@ -38,7 +38,7 @@ def sequence_to_hp(sequence):
     return hp_string
 
 
-def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=10.0, final_t=0.01):
+def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final_t=0.001):
     """
     Generates an approximate minimum-energy 2D protein conformation
     using Simulated Annealing with the full 4-move local move set.
@@ -52,8 +52,8 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=10.0, final
     ----------
     hp_string   : str   Binary HP sequence (e.g. "HPHPH")
     iterations  : int   Total number of move attempts (default: 100,000)
-    initial_t   : float Starting temperature T₀ (default: 10.0)
-    final_t     : float Final temperature T_f (default: 0.01)
+    initial_t   : float Starting temperature T₀ (default: 30.0)
+    final_t     : float Final temperature T_f (default: 0.001)
 
     Returns
     -------

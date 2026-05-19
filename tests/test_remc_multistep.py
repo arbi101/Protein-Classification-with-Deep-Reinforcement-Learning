@@ -36,8 +36,8 @@ def main():
             
             for i in range(n_runs):
                 start = time.time()
-                # Run REMC (5 replicas)
-                _, remc_en = run_remc(hp_str, iterations=iters, num_replicas=5)
+                # Run REMC (20 replicas)
+                _, remc_en = run_remc(hp_str, iterations=iters, num_replicas=20, t_min=0.1)
                 remc_t = time.time() - start
                 remc_times.append(remc_t)
                 remc_energies.append(remc_en)

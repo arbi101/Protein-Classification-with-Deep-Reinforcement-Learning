@@ -237,9 +237,30 @@ class DQNAgent:
       - memory      : the experience replay buffer
       - optimizer   : Adam optimizer for gradient updates
 
-    The TARGET NETWORK is the key stabilization trick in DQN: without it,
-    the network would be chasing a constantly-moving target, causing
-    oscillations or divergence during training.
+    Key Design: RANDOMNESS IN RL vs Deterministic Search
+    ────────────────────────────────────────────────────────────────────────
+    Unlike HC (greedy search), RL agents REQUIRE randomness for learning:
+    
+    1. ε-greedy EXPLORATION: With probability ε, take a random action instead
+       of the "best" action according to the policy. This forces the agent to:
+       - Discover whether other moves are better (exploration vs exploitation trade-off)
+       - Sample diverse trajectories that the network learns from
+       
+    2. Experience REPLAY RANDOMNESS: Mini-batches sampled randomly from the buffer
+       break temporal correlations and improve learning stability.
+       
+    3. MOVE PARAMETER RANDOMNESS: Even when applying a deterministic move type
+       (e.g., end_flip), the target residue and destination are chosen randomly
+       from valid options. This is a stochastic move set, not deterministic.
+    
+    WITHOUT this randomness, DQN would:
+      - Get stuck in local minima like greedy search
+      - Overfit to specific patterns
+      - Fail to explore alternative folding pathways
+    
+    The TARGET NETWORK is the stabilization trick: it prevents the network
+    from chasing a constantly-moving target during training, which would
+    cause divergence or oscillations.
     """
 
     def __init__(self, num_actions=4, lr=1e-3, gamma=0.95, buffer_size=10000):
@@ -276,9 +297,23 @@ class DQNAgent:
 
     def select_action(self, state_grid, epsilon):
         """
-        Selects an action using the ε-greedy policy:
+        Selects an action using the ε-greedy policy.
+        
+        This is the CORE EXPLORATION MECHANISM of DQN:
           - With probability ε : pick a RANDOM action (exploration)
           - With probability 1−ε: pick the action with the HIGHEST Q-value (exploitation)
+        
+        Why ε-greedy randomness is ESSENTIAL:
+          Without it, the agent would always exploit (greedily choose the "best" move),
+          which causes the same problems as Hill Climbing: getting stuck in local minima.
+          By occasionally taking random actions, the agent:
+            1. Discovers whether "suboptimal" moves lead to better long-term outcomes
+            2. Samples diverse conformations and trajectory data for training
+            3. Averages over different exploration paths, improving generalization
+        
+        ε is typically DECAYED over time: start high (100% random) to explore,
+        gradually decrease to exploit the learned policy. This balances exploration
+        early in training with exploitation of learned knowledge later.
 
         Parameters
         ----------
