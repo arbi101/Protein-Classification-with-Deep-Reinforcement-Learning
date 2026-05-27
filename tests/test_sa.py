@@ -38,7 +38,9 @@ def sequence_to_hp(sequence):
     return hp_string
 
 
-def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final_t=0.001):
+def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final_t=0.001,
+                             return_trace=False, trace_interval=1000,
+                             max_trace_frames=200):
     """
     Generates an approximate minimum-energy 2D protein conformation
     using Simulated Annealing with the full 4-move local move set.
@@ -62,6 +64,8 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
     """
     if not hp_string:
         # Empty sequence → nothing to fold
+        if return_trace:
+            return [], 0, []
         return [], 0
 
     def calculate_energy(pos_list):
@@ -96,9 +100,26 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
     # Global best tracker (separate from the random-walk current state)
     best_positions = list(current_positions)
     best_energy = current_energy
+    trace_frames = []
+
+    def add_trace_frame(step):
+        if not return_trace:
+            return
+        if len(trace_frames) >= max_trace_frames:
+            return
+        trace_frames.append({
+            "step": step,
+            "energy": best_energy,
+            "positions": list(best_positions),
+        })
+
+    trace_interval = max(1, int(trace_interval))
+    max_trace_frames = max(2, int(max_trace_frames))
+    add_trace_frame(0)
 
     # ── Main SA loop ──────────────────────────────────────────────────────
     for i in range(iterations):
+        step = i + 1
         if len(hp_string) <= 2:
             break  # Chains too short to have any HH contacts
 
@@ -238,6 +259,14 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
                     current_energy = new_energy
                     # Note: global best is NOT updated here since energy worsened
 
+        if step % trace_interval == 0:
+            add_trace_frame(step)
+
+    if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
+        add_trace_frame(iterations)
+
+    if return_trace:
+        return best_positions, best_energy, trace_frames
     return best_positions, best_energy
 
 

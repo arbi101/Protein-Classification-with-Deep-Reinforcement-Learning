@@ -15,11 +15,141 @@ import math
 import sys
 import os
 
+ALGORITHM_DEFAULTS = {
+    'hc_iterations': 100000,
+    'sa_iterations': 100000,
+    'sa_initial_t': 30.0,
+    'sa_final_t': 0.001,
+    'mc_iterations': 100000,
+    'mc_temperature': 5.0,
+    'remc_iterations': 100000,
+    'remc_replicas': 20,
+    'remc_swap': 200,
+    'remc_tmin': 0.1,
+    'remc_tmax': 30.0,
+    'dqn_rollouts': 200,
+    'trace_interval': 500,
+}
+
+BEST_ALGORITHM_PARAMS = {
+    'hc': {'Iterations': ALGORITHM_DEFAULTS['hc_iterations']},
+    'sa': {
+        'Iterations': ALGORITHM_DEFAULTS['sa_iterations'],
+        'Initial Temperature': f"{ALGORITHM_DEFAULTS['sa_initial_t']}",
+        'Final Temperature': f"{ALGORITHM_DEFAULTS['sa_final_t']}",
+    },
+    'mc': {
+        'Iterations': ALGORITHM_DEFAULTS['mc_iterations'],
+        'Temperature': f"{ALGORITHM_DEFAULTS['mc_temperature']}",
+    },
+    'remc': {
+        'Iterations': ALGORITHM_DEFAULTS['remc_iterations'],
+        'Replicas': ALGORITHM_DEFAULTS['remc_replicas'],
+        'Swap Interval': ALGORITHM_DEFAULTS['remc_swap'],
+        'T Min': f"{ALGORITHM_DEFAULTS['remc_tmin']}",
+        'T Max': f"{ALGORITHM_DEFAULTS['remc_tmax']}",
+    },
+    'ql': {
+        'Model': 'Advanced DQN',
+        'Rollouts': ALGORITHM_DEFAULTS['dqn_rollouts'],
+        'Construction Step Interval': 1,
+    },
+}
+
+ALGORITHM_LABELS = {
+    'hc': 'Hill Climbing',
+    'sa': 'Simulated Annealing',
+    'mc': 'Monte Carlo',
+    'remc': 'Replica Exchange MC',
+    'ql': 'Advanced Deep Q-Learning',
+}
+
+
+def build_used_params(algorithm, params):
+    return {
+        'Model': 'Advanced DQN' if algorithm == 'ql' else None,
+        'Iterations': (
+            params['hc_iterations'] if algorithm == 'hc'
+            else params['sa_iterations'] if algorithm == 'sa'
+            else params['mc_iterations'] if algorithm == 'mc'
+            else params['remc_iterations'] if algorithm == 'remc'
+            else None
+        ),
+        'Initial Temperature': f"{params['sa_initial_t']}" if algorithm == 'sa' else None,
+        'Temperature': f"{params['mc_temperature']}" if algorithm == 'mc' else None,
+        'Final Temperature': f"{params['sa_final_t']}" if algorithm == 'sa' else None,
+        'Replicas': params['remc_replicas'] if algorithm == 'remc' else None,
+        'Swap Interval': params['remc_swap'] if algorithm == 'remc' else None,
+        'T Min': f"{params['remc_tmin']}" if algorithm == 'remc' else None,
+        'T Max': f"{params['remc_tmax']}" if algorithm == 'remc' else None,
+        'Rollouts': params['dqn_rollouts'] if algorithm == 'ql' else None,
+        'Step Interval': params.get('trace_interval'),
+    }
+
+
+def get_algorithm_budget(algorithm, params, hp_string):
+    if algorithm == 'hc':
+        return params['hc_iterations']
+    if algorithm == 'sa':
+        return params['sa_iterations']
+    if algorithm == 'mc':
+        return params['mc_iterations']
+    if algorithm == 'remc':
+        return params['remc_iterations']
+    return len(hp_string)
+
+
+def clamp_trace_interval(algorithm, requested_interval, total_steps, max_frames=200):
+    min_interval = 1 if algorithm == 'ql' else 500
+    requested_interval = max(min_interval, int(requested_interval))
+    frame_limited_interval = max(1, math.ceil(max(1, total_steps) / max_frames))
+    return max(requested_interval, frame_limited_interval), max_frames
+
+
+def positions_to_structure(positions, hp_string):
+    if not positions:
+        return [], 0, 0
+
+    xs = [x for x, y in positions]
+    ys = [y for x, y in positions]
+    min_x, max_x = min(xs), max(xs)
+    min_y, max_y = min(ys), max(ys)
+    width = max_x - min_x + 1
+    height = max_y - min_y + 1
+
+    structure = [
+        {
+            'x': x,
+            'y': y,
+            'grid_x': x - min_x + 1,
+            'grid_y': y - min_y + 1,
+            'type': hp_string[i],
+        }
+        for i, (x, y) in enumerate(positions)
+    ]
+    return structure, width, height
+
+
+def build_step_frames(trace_frames, hp_string, algorithm):
+    frame_label = 'Residue' if algorithm == 'ql' else 'Iteration'
+    step_frames = []
+    for frame in trace_frames:
+        frame_structure, _, _ = positions_to_structure(frame['positions'], hp_string)
+        step_frames.append({
+            'step': frame['step'],
+            'energy': frame['energy'],
+            'structure': frame_structure,
+            'label': frame_label,
+        })
+    return step_frames
+
+
 # ── Path setup: make the tests/ directory importable ─────────────────────────
 # Django's working directory is protein_project/, so we must add tests/ manually
 current_dir = os.path.dirname(os.path.abspath(__file__))        # .../go_predictor/
-project_dir = os.path.dirname(os.path.dirname(current_dir))     # .../ProjetoFinal/
-tests_dir   = os.path.join(project_dir, 'tests')                # .../ProjetoFinal/tests/
+project_dir = os.path.dirname(os.path.dirname(current_dir))     # .../Protein-Classification.../
+tests_dir   = os.path.join(project_dir, 'tests')                # .../Protein-Classification.../tests/
+model_dir   = os.path.join(project_dir, 'model')                # .../Protein-Classification.../model/
 if tests_dir not in sys.path:
     sys.path.append(tests_dir)  # allow 'import test_hc' etc. from anywhere
 
@@ -30,19 +160,29 @@ try:
     from test_mc   import generate_2d_structure_mc       as run_mc    # Monte Carlo
     from test_remc import generate_2d_structure_remc     as run_remc  # Replica Exchange MC
     from test_ql   import generate_2d_structure_ql       as _run_ql_raw  # Tabular Q-Learning (raw)
-    from agent_dqn import run_dqn_inference                           # DQN inference
+    from agent_dqn_advanced import run_dqn_advanced_inference         # Advanced DQN inference
 
-    # Absolute path to the pre-trained DQN weights file
-    dqn_weights_path = os.path.join(tests_dir, 'dqn_weights.pth')
+    # Absolute path to the Colab-trained advanced DQN weights file
+    dqn_weights_path = os.path.join(model_dir, 'dqn_advanced_weights.pth')
 
     def run_ql(hp_string, **kwargs):
         """
-        Wrapper that replaces slow tabular Q-Learning with fast DQN inference
-        for real-time web use. Runs only 200 greedy inference steps so the
-        web response is near-instant.
+        Wrapper that replaces slow tabular Q-Learning with advanced DQN
+        inference for real-time web use.
         """
-        positions, energy = run_dqn_inference(hp_string, dqn_weights_path, max_steps=200)
-        return positions, energy
+        max_rollouts = kwargs.get(
+            'max_steps_per_episode',
+            kwargs.get('steps', ALGORITHM_DEFAULTS['dqn_rollouts']),
+        )
+        result = run_dqn_advanced_inference(
+            hp_string,
+            dqn_weights_path,
+            max_rollouts=max_rollouts,
+            return_trace=kwargs.get('return_trace', False),
+            trace_interval=kwargs.get('trace_interval', 1),
+            max_trace_frames=kwargs.get('max_trace_frames', 200),
+        )
+        return result
 
 except ImportError as e:
     # If imports fail (e.g., missing PyTorch), print a warning but don't crash
@@ -139,6 +279,7 @@ def predict_go(request):
     energy = 0
     error_message = None
     selected_algorithm = 'sa'   # default algorithm shown in the UI
+    algorithm_params = ALGORITHM_DEFAULTS.copy()
 
     if request.method == 'POST':
         form = ProteinSearchForm(request.POST)
@@ -173,92 +314,120 @@ def predict_go(request):
                 # Parse all algorithm hyperparameters from the POST form.
                 # Use try/except to handle invalid (non-numeric) input gracefully.
                 try:
-                    hc_iterations   = int(request.POST.get('hc_iterations', 50000))
-                    sa_iterations   = int(request.POST.get('sa_iterations', 50000))
-                    sa_initial_t    = float(request.POST.get('sa_initial_t', 30.0))
-                    sa_final_t      = float(request.POST.get('sa_final_t', 0.001))
-                    mc_iterations   = int(request.POST.get('mc_iterations', 50000))
-                    mc_temperature  = float(request.POST.get('mc_temperature', 2.0))
-                    remc_iterations = int(request.POST.get('remc_iterations', 50000))
-                    remc_replicas   = int(request.POST.get('remc_replicas', 5))
-                    remc_swap       = int(request.POST.get('remc_swap', 200))
-                    remc_tmin       = float(request.POST.get('remc_tmin', 0.1))
-                    remc_tmax       = float(request.POST.get('remc_tmax', 30.0))
-                    ql_episodes     = int(request.POST.get('ql_episodes', 100))
-                    ql_steps        = int(request.POST.get('ql_steps', 200))
+                    hc_iterations   = int(request.POST.get('hc_iterations', ALGORITHM_DEFAULTS['hc_iterations']))
+                    sa_iterations   = int(request.POST.get('sa_iterations', ALGORITHM_DEFAULTS['sa_iterations']))
+                    sa_initial_t    = float(request.POST.get('sa_initial_t', ALGORITHM_DEFAULTS['sa_initial_t']))
+                    sa_final_t      = float(request.POST.get('sa_final_t', ALGORITHM_DEFAULTS['sa_final_t']))
+                    mc_iterations   = int(request.POST.get('mc_iterations', ALGORITHM_DEFAULTS['mc_iterations']))
+                    mc_temperature  = float(request.POST.get('mc_temperature', ALGORITHM_DEFAULTS['mc_temperature']))
+                    remc_iterations = int(request.POST.get('remc_iterations', ALGORITHM_DEFAULTS['remc_iterations']))
+                    remc_replicas   = int(request.POST.get('remc_replicas', ALGORITHM_DEFAULTS['remc_replicas']))
+                    remc_swap       = int(request.POST.get('remc_swap', ALGORITHM_DEFAULTS['remc_swap']))
+                    remc_tmin       = float(request.POST.get('remc_tmin', ALGORITHM_DEFAULTS['remc_tmin']))
+                    remc_tmax       = float(request.POST.get('remc_tmax', ALGORITHM_DEFAULTS['remc_tmax']))
+                    ql_steps        = int(request.POST.get('ql_steps', ALGORITHM_DEFAULTS['dqn_rollouts']))
+                    trace_interval  = int(request.POST.get('trace_interval', ALGORITHM_DEFAULTS['trace_interval']))
                 except (ValueError, TypeError):
                     # If any value is invalid, fall back to safe defaults
                     error_message = "Invalid hyperparameter values. Using defaults."
-                    hc_iterations = sa_iterations = mc_iterations = remc_iterations = 50000
-                    sa_initial_t = 30.0;  sa_final_t = 0.001
-                    mc_temperature = 2.0; remc_replicas = 5; remc_swap = 200
-                    remc_tmin = 0.1;      remc_tmax = 30.0
-                    ql_episodes = 100;    ql_steps = 200
+                    hc_iterations   = ALGORITHM_DEFAULTS['hc_iterations']
+                    sa_iterations   = ALGORITHM_DEFAULTS['sa_iterations']
+                    sa_initial_t    = ALGORITHM_DEFAULTS['sa_initial_t']
+                    sa_final_t      = ALGORITHM_DEFAULTS['sa_final_t']
+                    mc_iterations   = ALGORITHM_DEFAULTS['mc_iterations']
+                    mc_temperature  = ALGORITHM_DEFAULTS['mc_temperature']
+                    remc_iterations = ALGORITHM_DEFAULTS['remc_iterations']
+                    remc_replicas   = ALGORITHM_DEFAULTS['remc_replicas']
+                    remc_swap       = ALGORITHM_DEFAULTS['remc_swap']
+                    remc_tmin       = ALGORITHM_DEFAULTS['remc_tmin']
+                    remc_tmax       = ALGORITHM_DEFAULTS['remc_tmax']
+                    ql_steps        = ALGORITHM_DEFAULTS['dqn_rollouts']
+                    trace_interval  = ALGORITHM_DEFAULTS['trace_interval']
+
+                algorithm_params = {
+                    'hc_iterations': hc_iterations,
+                    'sa_iterations': sa_iterations,
+                    'sa_initial_t': sa_initial_t,
+                    'sa_final_t': sa_final_t,
+                    'mc_iterations': mc_iterations,
+                    'mc_temperature': mc_temperature,
+                    'remc_iterations': remc_iterations,
+                    'remc_replicas': remc_replicas,
+                    'remc_swap': remc_swap,
+                    'remc_tmin': remc_tmin,
+                    'remc_tmax': remc_tmax,
+                    'dqn_rollouts': ql_steps,
+                    'trace_interval': trace_interval,
+                }
 
                 if sequences:
                     # Process at most 5 sequences per request (performance limit)
                     for seq_data in sequences[:5]:
                         sequence  = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)   # convert AA → HP string
+                        total_steps = get_algorithm_budget(algorithm, algorithm_params, hp_string)
+                        effective_trace_interval, max_trace_frames = clamp_trace_interval(
+                            algorithm,
+                            trace_interval,
+                            total_steps,
+                        )
+                        algorithm_params['trace_interval'] = effective_trace_interval
 
                         # ── Dispatch to the selected algorithm ────────────
                         if algorithm == 'hc':
-                            positions, energy = run_hc(hp_string, iterations=hc_iterations)
+                            positions, energy, trace_frames = run_hc(
+                                hp_string,
+                                iterations=hc_iterations,
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
                         elif algorithm == 'mc':
-                            positions, energy = run_mc(hp_string, iterations=mc_iterations, temperature=mc_temperature)
+                            positions, energy, trace_frames = run_mc(
+                                hp_string,
+                                iterations=mc_iterations,
+                                temperature=mc_temperature,
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
                         elif algorithm == 'remc':
-                            positions, energy = run_remc(hp_string, iterations=remc_iterations,
-                                                         num_replicas=remc_replicas,
-                                                         t_min=remc_tmin, t_max=remc_tmax,
-                                                         swap_interval=remc_swap)
+                            positions, energy, trace_frames = run_remc(
+                                hp_string,
+                                iterations=remc_iterations,
+                                num_replicas=remc_replicas,
+                                t_min=remc_tmin,
+                                t_max=remc_tmax,
+                                swap_interval=remc_swap,
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
                         elif algorithm == 'ql':
-                            positions, energy = run_ql(hp_string, episodes=ql_episodes,
-                                                       max_steps_per_episode=ql_steps)
+                            positions, energy, trace_frames = run_ql(
+                                hp_string,
+                                max_steps_per_episode=ql_steps,
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
                         else:  # 'sa' is the default
-                            positions, energy = run_sa(hp_string, iterations=sa_iterations,
-                                                       initial_t=sa_initial_t, final_t=sa_final_t)
+                            positions, energy, trace_frames = run_sa(
+                                hp_string,
+                                iterations=sa_iterations,
+                                initial_t=sa_initial_t,
+                                final_t=sa_final_t,
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
 
                         # ── Compute SVG grid bounds ────────────────────────
-                        # Find the bounding box of all residue positions so
-                        # the SVG renderer can auto-scale the lattice to fit
-                        xs = [x for x, y in positions]
-                        ys = [y for x, y in positions]
-                        min_x, max_x = min(xs), max(xs)
-                        min_y, max_y = min(ys), max(ys)
-                        width  = max_x - min_x + 1   # lattice width in cells
-                        height = max_y - min_y + 1   # lattice height in cells
+                        structure, width, height = positions_to_structure(positions, hp_string)
+                        step_frames = build_step_frames(trace_frames, hp_string, algorithm)
 
-                        # Build a list of residue dicts for the template.
-                        # grid_x / grid_y are 1-indexed positions inside the bounding box.
-                        structure = [
-                            {
-                                'x': x, 'y': y,
-                                'grid_x': x - min_x + 1,   # normalise to 1..width
-                                'grid_y': y - min_y + 1,   # normalise to 1..height
-                                'type': hp_string[i]        # 'H' or 'P'
-                            }
-                            for i, (x, y) in enumerate(positions)
-                        ]
-
-                        # Build a dict of the hyperparameters actually used
-                        used_params = {
-                            'Iterations':        hc_iterations if algorithm == 'hc' else sa_iterations if algorithm == 'sa' else mc_iterations if algorithm == 'mc' else remc_iterations if algorithm == 'remc' else f'{ql_episodes} episodes',
-                            'Temperature':       f'{sa_initial_t}' if algorithm == 'sa' else f'{mc_temperature}' if algorithm == 'mc' else None,
-                            'Final Temperature': f'{sa_final_t}'   if algorithm == 'sa' else None,
-                            'Replicas':          remc_replicas      if algorithm == 'remc' else None,
-                            'Swap Interval':     remc_swap          if algorithm == 'remc' else None,
-                            'T Min':             f'{remc_tmin}'     if algorithm == 'remc' else None,
-                            'T Max':             f'{remc_tmax}'     if algorithm == 'remc' else None,
-                            'Steps per Episode': ql_steps           if algorithm == 'ql'   else None,
-                        }
-
-                        # Build a dict of the recommended "best" parameters per algorithm
-                        best_params = {}
-                        if   algorithm == 'hc':   best_params = {'Iterations': 50000}
-                        elif algorithm == 'sa':   best_params = {'Iterations': 50000, 'Temperature': '30.0', 'Final Temperature': '0.001'}
-                        elif algorithm == 'mc':   best_params = {'Iterations': 50000, 'Temperature': '2.0'}
-                        elif algorithm == 'remc': best_params = {'Iterations': 50000, 'Replicas': 5, 'Swap Interval': 200, 'T Min': '0.1', 'T Max': '30.0'}
-                        elif algorithm == 'ql':   best_params = {'Episodes': 100, 'Steps per Episode': 200}
+                        used_params = build_used_params(algorithm, algorithm_params)
+                        best_params = BEST_ALGORITHM_PARAMS.get(algorithm, {})
 
                         structures.append({
                             'name':        seq_data['header'] or f'Sequence {len(structures)+1}',
@@ -268,8 +437,12 @@ def predict_go(request):
                             'grid_width':  width,
                             'grid_height': height,
                             'algorithm':   algorithm,
+                            'algorithm_label': ALGORITHM_LABELS.get(algorithm, algorithm.upper()),
                             'used_params': used_params,
-                            'best_params': best_params
+                            'best_params': best_params,
+                            'step_frames': step_frames,
+                            'trace_interval': effective_trace_interval,
+                            'total_steps': total_steps,
                         })
                 else:
                     error_message = "Enter valid FASTA sequences."
@@ -330,6 +503,7 @@ def predict_go(request):
         'alphafold_results':  alphafold_results,   # 3D structure results
         'error_message':      error_message,
         'selected_algorithm': selected_algorithm,
+        'algorithm_params':   algorithm_params,
         'year':               year
     })
 
@@ -441,6 +615,7 @@ def structure_2d(request):
     alphafold_results = []
     error_message = None
     selected_algorithm = 'sa'
+    algorithm_params = ALGORITHM_DEFAULTS.copy()
 
     if request.method == 'POST':
         form = ProteinSearchForm(request.POST)
@@ -452,35 +627,86 @@ def structure_2d(request):
 
             if action == 'structure' or not action:
                 algorithm = request.POST.get('algorithm', 'sa')
+                try:
+                    trace_interval = int(request.POST.get('trace_interval', ALGORITHM_DEFAULTS['trace_interval']))
+                except (ValueError, TypeError):
+                    trace_interval = ALGORITHM_DEFAULTS['trace_interval']
+                algorithm_params['trace_interval'] = trace_interval
                 if sequences:
                     for seq_data in sequences[:5]:
                         sequence  = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)
+                        total_steps = get_algorithm_budget(algorithm, algorithm_params, hp_string)
+                        effective_trace_interval, max_trace_frames = clamp_trace_interval(
+                            algorithm,
+                            trace_interval,
+                            total_steps,
+                        )
+                        algorithm_params['trace_interval'] = effective_trace_interval
 
                         # Run the selected algorithm with default parameters
-                        if   algorithm == 'hc':   positions, energy = run_hc(hp_string, iterations=50000)
-                        elif algorithm == 'mc':   positions, energy = run_mc(hp_string, iterations=50000, temperature=2.0)
-                        elif algorithm == 'remc': positions, energy = run_remc(hp_string, iterations=50000, num_replicas=5)
-                        elif algorithm == 'ql':   positions, energy = run_ql(hp_string, episodes=500, max_steps_per_episode=200)
-                        else:                     positions, energy = run_sa(hp_string, iterations=50000)
+                        if algorithm == 'hc':
+                            positions, energy, trace_frames = run_hc(
+                                hp_string,
+                                iterations=ALGORITHM_DEFAULTS['hc_iterations'],
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
+                        elif algorithm == 'mc':
+                            positions, energy, trace_frames = run_mc(
+                                hp_string,
+                                iterations=ALGORITHM_DEFAULTS['mc_iterations'],
+                                temperature=ALGORITHM_DEFAULTS['mc_temperature'],
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
+                        elif algorithm == 'remc':
+                            positions, energy, trace_frames = run_remc(
+                                hp_string,
+                                iterations=ALGORITHM_DEFAULTS['remc_iterations'],
+                                num_replicas=ALGORITHM_DEFAULTS['remc_replicas'],
+                                t_min=ALGORITHM_DEFAULTS['remc_tmin'],
+                                t_max=ALGORITHM_DEFAULTS['remc_tmax'],
+                                swap_interval=ALGORITHM_DEFAULTS['remc_swap'],
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
+                        elif algorithm == 'ql':
+                            positions, energy, trace_frames = run_ql(
+                                hp_string,
+                                max_steps_per_episode=ALGORITHM_DEFAULTS['dqn_rollouts'],
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
+                        else:
+                            positions, energy, trace_frames = run_sa(
+                                hp_string,
+                                iterations=ALGORITHM_DEFAULTS['sa_iterations'],
+                                initial_t=ALGORITHM_DEFAULTS['sa_initial_t'],
+                                final_t=ALGORITHM_DEFAULTS['sa_final_t'],
+                                return_trace=True,
+                                trace_interval=effective_trace_interval,
+                                max_trace_frames=max_trace_frames,
+                            )
 
                         # Compute bounding box for SVG scaling
-                        xs = [x for x, y in positions]; ys = [y for x, y in positions]
-                        min_x, max_x = min(xs), max(xs); min_y, max_y = min(ys), max(ys)
-                        width  = max_x - min_x + 1
-                        height = max_y - min_y + 1
-
-                        # Build residue list for the template
-                        structure = [
-                            {'x': x, 'y': y,
-                             'grid_x': x - min_x + 1, 'grid_y': y - min_y + 1,
-                             'type': hp_string[i]}
-                            for i, (x, y) in enumerate(positions)
-                        ]
+                        structure, width, height = positions_to_structure(positions, hp_string)
+                        step_frames = build_step_frames(trace_frames, hp_string, algorithm)
                         structures.append({
                             'name': seq_data['header'] or f'Sequence {len(structures)+1}',
                             'structure': structure, 'hp_string': hp_string,
-                            'energy': energy, 'grid_width': width, 'grid_height': height
+                            'energy': energy, 'grid_width': width, 'grid_height': height,
+                            'algorithm': algorithm,
+                            'algorithm_label': ALGORITHM_LABELS.get(algorithm, algorithm.upper()),
+                            'used_params': build_used_params(algorithm, algorithm_params),
+                            'best_params': BEST_ALGORITHM_PARAMS.get(algorithm, {}),
+                            'step_frames': step_frames,
+                            'trace_interval': effective_trace_interval,
+                            'total_steps': total_steps,
                         })
                 else:
                     error_message = "Enter valid FASTA sequences."
@@ -518,7 +744,9 @@ def structure_2d(request):
         'form': form, 'structures': structures,
         'alphafold_results': alphafold_results,
         'error_message': error_message,
-        'selected_algorithm': selected_algorithm, 'year': year
+        'selected_algorithm': selected_algorithm,
+        'algorithm_params': algorithm_params,
+        'year': year
     })
 
 

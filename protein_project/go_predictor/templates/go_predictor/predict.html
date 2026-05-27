@@ -80,7 +80,7 @@
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="hc">
                                     <div>
                                         <label class="text-xs font-medium text-slate-700">Iterations:</label>
-                                        <input type="number" name="hc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                        <input type="number" name="hc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.hc_iterations|default:100000 }}" min="1000" step="1000">
                                     </div>
                                 </div>
                             </div>
@@ -99,16 +99,16 @@
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="sa">
                                     <div>
                                         <label class="text-xs font-medium text-slate-700">Iterations:</label>
-                                        <input type="number" name="sa_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                        <input type="number" name="sa_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.sa_iterations|default:100000 }}" min="1000" step="1000">
                                     </div>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">Initial T:</label>
-                                            <input type="number" name="sa_initial_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="30.0" min="0.1" step="0.1">
+                                            <input type="number" name="sa_initial_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.sa_initial_t|default:'30.0' }}" min="0.1" step="0.1">
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">Final T:</label>
-                                            <input type="number" name="sa_final_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="0.001" min="0.0001" step="0.0001">
+                                            <input type="number" name="sa_final_t" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.sa_final_t|default:'0.001' }}" min="0.0001" step="0.0001">
                                         </div>
                                     </div>
                                 </div>
@@ -128,11 +128,11 @@
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="mc">
                                     <div>
                                         <label class="text-xs font-medium text-slate-700">Iterations:</label>
-                                        <input type="number" name="mc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                        <input type="number" name="mc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.mc_iterations|default:100000 }}" min="1000" step="1000">
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-slate-700">Temperature:</label>
-                                        <input type="number" name="mc_temperature" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="2.0" min="0.1" step="0.1">
+                                        <input type="number" name="mc_temperature" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.mc_temperature|default:'5.0' }}" min="0.1" step="0.1">
                                     </div>
                                 </div>
                             </div>
@@ -151,26 +151,26 @@
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="remc">
                                     <div>
                                         <label class="text-xs font-medium text-slate-700">Iterations:</label>
-                                        <input type="number" name="remc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="50000" min="1000" step="1000">
+                                        <input type="number" name="remc_iterations" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_iterations|default:100000 }}" min="1000" step="1000">
                                     </div>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">Replicas:</label>
-                                            <input type="number" name="remc_replicas" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="5" min="2" max="15" step="1">
+                                            <input type="number" name="remc_replicas" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_replicas|default:20 }}" min="2" max="30" step="1">
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">Swap Interval:</label>
-                                            <input type="number" name="remc_swap" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="200" min="50" step="50">
+                                            <input type="number" name="remc_swap" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_swap|default:200 }}" min="50" step="50">
                                         </div>
                                     </div>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">T Min:</label>
-                                            <input type="number" name="remc_tmin" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="0.1" min="0.01" step="0.1">
+                                            <input type="number" name="remc_tmin" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmin|default:'0.1' }}" min="0.01" step="0.1">
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">T Max:</label>
-                                            <input type="number" name="remc_tmax" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="30.0" min="5" step="5">
+                                            <input type="number" name="remc_tmax" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmax|default:'30.0' }}" min="5" step="5">
                                         </div>
                                     </div>
                                 </div>
@@ -185,18 +185,13 @@
                                     <div class="peer-checked:bg-emerald-600 bg-emerald-200 rounded-full p-2">
                                         <i data-lucide="brain" class="size-4 peer-checked:text-white text-emerald-700"></i>
                                     </div>
-                                    <h3 class="font-semibold text-emerald-800">⚡ Deep Q-Learning (RL)</h3>
+                                    <h3 class="font-semibold text-emerald-800">Advanced Deep Q-Learning (RL)</h3>
                                 </div>
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="ql">
-                                    <p class="text-xs text-emerald-700 font-medium">Best for proteins ≤ 25 AA</p>
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
-                                            <label class="text-xs font-medium text-slate-700">Episodes:</label>
-                                            <input type="number" name="ql_episodes" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="100" min="10" step="10">
-                                        </div>
-                                        <div>
-                                            <label class="text-xs font-medium text-slate-700">Steps/Episode:</label>
-                                            <input type="number" name="ql_steps" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="200" min="50" step="50">
+                                            <label class="text-xs font-medium text-slate-700">Rollouts:</label>
+                                            <input type="number" name="ql_steps" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.dqn_rollouts|default:200 }}" min="50" step="50">
                                         </div>
                                     </div>
                                 </div>
@@ -204,6 +199,20 @@
                         </label>
                     </div>
                     
+                    <div class="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-4">
+                        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2" for="trace_interval">
+                            <i data-lucide="timer" class="size-4 text-slate-500"></i>
+                            Show structure every N steps
+                        </label>
+                        <input type="number" id="trace_interval" name="trace_interval"
+                               class="w-full mt-2 px-3 py-2 border border-slate-300 rounded text-sm"
+                               value="{{ algorithm_params.trace_interval|default:500 }}"
+                               min="500" step="500">
+                        <p id="trace-interval-help" class="text-xs text-slate-500 mt-2">
+                            Minimum 500 for HC, SA, MC and REMC. The page saves at most 200 frames.
+                        </p>
+                    </div>
+
                     <p class="text-xs text-slate-500 mt-4">Modify the parameters to optimize generation according to your needs</p>
                     <div class="mt-6 flex gap-3">
                         <button type="button" id="cancel-algo-btn" class="px-6 py-2.5 text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg font-medium transition-colors">
@@ -281,6 +290,7 @@
                 <div class="w-full bg-slate-50 rounded-xl border border-slate-100 shadow-inner overflow-auto">
                     <svg id="svg-{{ forloop.counter }}" class="protein-svg block mx-auto"
                          data-structure="{{ struct.structure|safe }}"
+                         data-step-frames="{{ struct.step_frames|safe }}"
                          style="min-width:200px; min-height:200px;">
                     </svg>
                 </div>
@@ -299,6 +309,47 @@
                         <span class="text-sm font-medium text-slate-700">Start</span>
                     </div>
                 </div>
+
+                {% if struct.step_frames|length > 1 %}
+                <div class="step-explorer mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                     data-svg-id="svg-{{ forloop.counter }}">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="route" class="size-4 text-blue-600"></i>
+                                Step Explorer
+                            </div>
+                            <div class="text-xs text-slate-500 mt-1">
+                                Interval: {{ struct.trace_interval }} | Frames: {{ struct.step_frames|length }}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
+                                <span class="text-slate-500">Step</span>
+                                <span class="step-label block font-bold text-slate-900">-</span>
+                            </div>
+                            <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                                <span class="text-amber-700">Energy</span>
+                                <span class="energy-label block font-bold text-amber-700">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
+                        <div class="flex gap-2">
+                            <button type="button" class="step-prev rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" title="Previous step">
+                                <i data-lucide="chevron-left" class="size-4"></i>
+                            </button>
+                            <button type="button" class="step-play rounded-lg border border-blue-300 bg-blue-50 p-2 text-blue-700 hover:bg-blue-100" title="Play steps">
+                                <i data-lucide="play" class="size-4"></i>
+                            </button>
+                            <button type="button" class="step-next rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" title="Next step">
+                                <i data-lucide="chevron-right" class="size-4"></i>
+                            </button>
+                        </div>
+                        <input type="range" class="step-slider w-full accent-blue-600" min="0" value="0">
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Used Parameters vs Recommended Parameters -->
@@ -348,7 +399,7 @@
                 <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-200">
                     <div class="flex items-center gap-2 mb-4">
                         <i data-lucide="star" class="size-5 text-emerald-600"></i>
-                        <h4 class="text-lg font-bold text-emerald-900">Recommended Parameters for {{ struct.algorithm|default:"This Algorithm"|title }}</h4>
+                        <h4 class="text-lg font-bold text-emerald-900">Recommended Parameters for {{ struct.algorithm_label|default:"This Algorithm" }}</h4>
                     </div>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                         {% if struct.best_params %}
@@ -555,7 +606,7 @@
                                 <span class="font-semibold">Predict GO:</span> Enter a protein sequence in FASTA format and click on "Predict GO" to obtain functional predictions of the protein based on Gene Ontology terms.
                             </li>
                             <li>
-                                <span class="font-semibold">Generate 2D Structure:</span> Click on "Generate 2D Structure" to visualize a 2D representation of the protein using optimization algorithms (Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange MC, or Q-Learning). Choose your algorithm and configure parameters for optimal results.
+                                <span class="font-semibold">Generate 2D Structure:</span> Click on "Generate 2D Structure" to visualize a 2D representation of the protein using optimization algorithms (Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange MC, or Advanced Deep Q-Learning). Choose your algorithm and configure parameters for optimal results.
                             </li>
                             <li>
                                 <span class="font-semibold">Generate 3D Structure (AlphaFold):</span> Click on "Generate 3D Structure (AlphaFold)" to predict the complete 3D structure of your protein. The tool first searches the AlphaFold database, and if unavailable, uses ESMFold for real-time prediction.
@@ -706,6 +757,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // ===== Parameter Visibility Control =====
     const algoRadios = document.querySelectorAll('.algo-radio');
     const algoParams = document.querySelectorAll('.algo-params');
+    const traceInput = document.querySelector('input[name="trace_interval"]');
+    const traceHelp = document.getElementById('trace-interval-help');
+
+    function getSelectedAlgorithm() {
+        return document.querySelector('input[name="algorithm"]:checked')?.value || 'sa';
+    }
+
+    function updateTraceValidationMessage() {
+        if (!traceInput) return;
+        const selectedAlgo = getSelectedAlgorithm();
+        const minimum = selectedAlgo === 'ql' ? 1 : 500;
+        traceInput.setCustomValidity('');
+
+        if (traceInput.value && Number(traceInput.value) < minimum) {
+            const message = selectedAlgo === 'ql'
+                ? 'Enter a value of at least 1 for DQN construction steps.'
+                : 'Enter a value of at least 500 for classical algorithm steps.';
+            traceInput.setCustomValidity(message);
+        }
+    }
 
     function updateParameterVisibility(selectedAlgo) {
         algoParams.forEach(params => {
@@ -724,6 +795,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
+
+        if (traceInput && traceHelp) {
+            if (selectedAlgo === 'ql') {
+                traceInput.min = '1';
+                traceInput.step = '1';
+                if (!traceInput.dataset.userEdited || traceInput.value === '500' || traceInput.value === '1000') {
+                    traceInput.value = '1';
+                }
+                traceHelp.textContent = 'For DQN, steps are residues added during construction. Minimum 1.';
+            } else {
+                traceInput.min = '500';
+                traceInput.step = '500';
+                if (Number(traceInput.value) < 500) {
+                    traceInput.value = '500';
+                }
+                traceHelp.textContent = 'Minimum 500 for HC, SA, MC and REMC. The page saves at most 200 frames.';
+            }
+            updateTraceValidationMessage();
+        }
     }
 
     algoRadios.forEach(radio => {
@@ -735,24 +825,24 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ===== LocalStorage Parameter Persistence =====
-    const STORAGE_KEY = 'protein_predictor_params';
+    const STORAGE_KEY = 'protein_predictor_params_v2';
 
     function saveParametersToLocalStorage() {
         const params = {
             algorithm: document.querySelector('input[name="algorithm"]:checked')?.value || 'sa',
-            hc_iterations: document.querySelector('input[name="hc_iterations"]')?.value || '50000',
-            sa_iterations: document.querySelector('input[name="sa_iterations"]')?.value || '50000',
+            hc_iterations: document.querySelector('input[name="hc_iterations"]')?.value || '100000',
+            sa_iterations: document.querySelector('input[name="sa_iterations"]')?.value || '100000',
             sa_initial_t: document.querySelector('input[name="sa_initial_t"]')?.value || '30.0',
             sa_final_t: document.querySelector('input[name="sa_final_t"]')?.value || '0.001',
-            mc_iterations: document.querySelector('input[name="mc_iterations"]')?.value || '50000',
-            mc_temperature: document.querySelector('input[name="mc_temperature"]')?.value || '2.0',
-            remc_iterations: document.querySelector('input[name="remc_iterations"]')?.value || '50000',
-            remc_replicas: document.querySelector('input[name="remc_replicas"]')?.value || '5',
+            mc_iterations: document.querySelector('input[name="mc_iterations"]')?.value || '100000',
+            mc_temperature: document.querySelector('input[name="mc_temperature"]')?.value || '5.0',
+            remc_iterations: document.querySelector('input[name="remc_iterations"]')?.value || '100000',
+            remc_replicas: document.querySelector('input[name="remc_replicas"]')?.value || '20',
             remc_swap: document.querySelector('input[name="remc_swap"]')?.value || '200',
             remc_tmin: document.querySelector('input[name="remc_tmin"]')?.value || '0.1',
             remc_tmax: document.querySelector('input[name="remc_tmax"]')?.value || '30.0',
-            ql_episodes: document.querySelector('input[name="ql_episodes"]')?.value || '100',
-            ql_steps: document.querySelector('input[name="ql_steps"]')?.value || '200'
+            ql_steps: document.querySelector('input[name="ql_steps"]')?.value || '200',
+            trace_interval: document.querySelector('input[name="trace_interval"]')?.value || '500'
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(params));
     }
@@ -785,8 +875,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 remc_swap: 'remc_swap',
                 remc_tmin: 'remc_tmin',
                 remc_tmax: 'remc_tmax',
-                ql_episodes: 'ql_episodes',
-                ql_steps: 'ql_steps'
+                ql_steps: 'ql_steps',
+                trace_interval: 'trace_interval'
             };
 
             for (const [paramName, inputName] of Object.entries(inputMappings)) {
@@ -801,10 +891,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add event listeners to all parameter inputs to save on change
-    document.querySelectorAll('input[name^="hc_"], input[name^="sa_"], input[name^="mc_"], input[name^="remc_"], input[name^="ql_"]').forEach(input => {
+    document.querySelectorAll('input[name^="hc_"], input[name^="sa_"], input[name^="mc_"], input[name^="remc_"], input[name^="ql_"], input[name="trace_interval"]').forEach(input => {
+        input.addEventListener('input', () => {
+            input.dataset.userEdited = 'true';
+            if (input.name === 'trace_interval') updateTraceValidationMessage();
+        });
         input.addEventListener('change', saveParametersToLocalStorage);
         input.addEventListener('input', saveParametersToLocalStorage);
     });
+
+    if (traceInput) {
+        traceInput.addEventListener('invalid', updateTraceValidationMessage);
+        traceInput.addEventListener('change', updateTraceValidationMessage);
+    }
 
     // Add event listener to algorithm radios to save on change
     algoRadios.forEach(radio => {
@@ -846,22 +945,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const R    = 13;   // node radius
     const PAD  = 24;   // canvas padding
 
-    document.querySelectorAll('.protein-svg').forEach(svg => {
-        // Parse structure data embedded as a JSON-like string from Django
-        let rawData = svg.getAttribute('data-structure');
-        let points;
+    function parseEmbeddedData(rawData) {
         try {
-            // Django serialises dicts with single quotes; convert to valid JSON
             rawData = rawData
                 .replace(/'/g, '"')
                 .replace(/True/g, 'true')
                 .replace(/False/g, 'false');
-            points = JSON.parse(rawData);
+            return JSON.parse(rawData);
         } catch(e) {
             console.error('SVG parse error:', e, rawData);
-            return;
+            return null;
         }
+    }
+
+    function renderProteinSvg(svg, points) {
         if (!points || points.length === 0) return;
+        svg.innerHTML = '';
 
         // --- Compute bounds ---
         const xs = points.map(p => p.x);
@@ -963,6 +1062,78 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         }
+    }
+
+    document.querySelectorAll('.protein-svg').forEach(svg => {
+        const points = parseEmbeddedData(svg.getAttribute('data-structure'));
+        renderProteinSvg(svg, points);
+
+        const frames = parseEmbeddedData(svg.getAttribute('data-step-frames') || '[]') || [];
+        const explorer = document.querySelector(`.step-explorer[data-svg-id="${svg.id}"]`);
+        if (!explorer || frames.length === 0) return;
+
+        const slider = explorer.querySelector('.step-slider');
+        const prevBtn = explorer.querySelector('.step-prev');
+        const nextBtn = explorer.querySelector('.step-next');
+        const playBtn = explorer.querySelector('.step-play');
+        const stepLabel = explorer.querySelector('.step-label');
+        const energyLabel = explorer.querySelector('.energy-label');
+        let playTimer = null;
+
+        slider.max = String(frames.length - 1);
+
+        function setFrame(index) {
+            const safeIndex = Math.max(0, Math.min(frames.length - 1, Number(index)));
+            const frame = frames[safeIndex];
+            slider.value = String(safeIndex);
+            stepLabel.textContent = `${frame.label || 'Step'} ${frame.step}`;
+            energyLabel.textContent = frame.energy;
+            renderProteinSvg(svg, frame.structure);
+        }
+
+        function stopPlayback() {
+            if (playTimer) {
+                clearInterval(playTimer);
+                playTimer = null;
+                playBtn.innerHTML = '<i data-lucide="play" class="size-4"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+
+        slider.addEventListener('input', () => {
+            stopPlayback();
+            setFrame(slider.value);
+        });
+
+        prevBtn.addEventListener('click', () => {
+            stopPlayback();
+            setFrame(Number(slider.value) - 1);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            stopPlayback();
+            setFrame(Number(slider.value) + 1);
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (playTimer) {
+                stopPlayback();
+                return;
+            }
+            playBtn.innerHTML = '<i data-lucide="pause" class="size-4"></i>';
+            if (window.lucide) window.lucide.createIcons();
+            playTimer = setInterval(() => {
+                const nextIndex = Number(slider.value) + 1;
+                if (nextIndex >= frames.length) {
+                    stopPlayback();
+                    setFrame(frames.length - 1);
+                } else {
+                    setFrame(nextIndex);
+                }
+            }, 450);
+        });
+
+        setFrame(frames.length - 1);
     });
 });
 </script>

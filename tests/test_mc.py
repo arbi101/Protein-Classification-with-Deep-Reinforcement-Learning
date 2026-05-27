@@ -34,7 +34,9 @@ def sequence_to_hp(sequence):
     return ''.join(['H' if aa in hydrophobic else 'P' for aa in sequence])
 
 
-def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0):
+def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0,
+                             return_trace=False, trace_interval=1000,
+                             max_trace_frames=200):
     """
     Generates an approximate minimum-energy 2D conformation using
     Basic Monte Carlo at a CONSTANT temperature.
@@ -56,6 +58,8 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0):
     """
     if not hp_string:
         # Handle empty sequence gracefully
+        if return_trace:
+            return [], 0, []
         return [], 0
 
     def calculate_energy(pos_list):
@@ -90,9 +94,25 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0):
     # Track the globally best solution encountered during the run
     best_positions = list(current_positions)
     best_energy = current_energy
+    trace_frames = []
+
+    def add_trace_frame(step):
+        if not return_trace:
+            return
+        if len(trace_frames) >= max_trace_frames:
+            return
+        trace_frames.append({
+            "step": step,
+            "energy": best_energy,
+            "positions": list(best_positions),
+        })
+
+    trace_interval = max(1, int(trace_interval))
+    max_trace_frames = max(2, int(max_trace_frames))
+    add_trace_frame(0)
 
     # ── Main MC loop ──────────────────────────────────────────────────────
-    for _ in range(iterations):
+    for step in range(1, iterations + 1):
         if len(hp_string) <= 2:
             # Chains of length ≤ 2 cannot form any HH contacts
             break
@@ -226,6 +246,14 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0):
                     current_energy = new_energy
                     # Note: global best NOT updated here (energy worsened)
 
+        if step % trace_interval == 0:
+            add_trace_frame(step)
+
+    if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
+        add_trace_frame(iterations)
+
+    if return_trace:
+        return best_positions, best_energy, trace_frames
     return best_positions, best_energy
 
 

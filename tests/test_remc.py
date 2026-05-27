@@ -37,7 +37,8 @@ def sequence_to_hp(sequence):
 
 def generate_2d_structure_remc(hp_string, iterations=300_000,
                                 num_replicas=10, t_min=0.1, t_max=30.0,
-                                swap_interval=200):
+                                swap_interval=200, return_trace=False,
+                                trace_interval=1000, max_trace_frames=200):
     """
     Generates an approximate minimum-energy 2D protein conformation using
     Replica Exchange Monte Carlo (Parallel Tempering).
@@ -64,10 +65,15 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
     """
     if not hp_string:
         # Empty sequence → nothing to fold
+        if return_trace:
+            return [], 0, []
         return [], 0
     if len(hp_string) <= 2:
         # Chains too short for any HH contacts → return straight line, energy 0
-        return [(i, 0) for i in range(len(hp_string))], 0
+        positions = [(i, 0) for i in range(len(hp_string))]
+        if return_trace:
+            return positions, 0, [{"step": 0, "energy": 0, "positions": positions}]
+        return positions, 0
 
     def calculate_energy(pos_list):
         """
@@ -113,6 +119,22 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
     # Global best tracks the single best conformation seen across ALL replicas
     global_best_pos    = list(replicas_pos[0])
     global_best_energy = replicas_en[0]
+    trace_frames = []
+
+    def add_trace_frame(step):
+        if not return_trace:
+            return
+        if len(trace_frames) >= max_trace_frames:
+            return
+        trace_frames.append({
+            "step": step,
+            "energy": global_best_energy,
+            "positions": list(global_best_pos),
+        })
+
+    trace_interval = max(1, int(trace_interval))
+    max_trace_frames = max(2, int(max_trace_frames))
+    add_trace_frame(0)
 
     # ── Main REMC loop ────────────────────────────────────────────────────
     for step in range(1, iterations + 1):
@@ -252,7 +274,15 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
                 replicas_en[idx], replicas_en[j_idx] = \
                     replicas_en[j_idx], replicas_en[idx]
 
+        if step % trace_interval == 0:
+            add_trace_frame(step)
+
+    if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
+        add_trace_frame(iterations)
+
     # Return the globally best conformation seen across all replicas and all steps
+    if return_trace:
+        return global_best_pos, global_best_energy, trace_frames
     return global_best_pos, global_best_energy
 
 

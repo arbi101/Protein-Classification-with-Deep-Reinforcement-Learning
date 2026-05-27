@@ -57,37 +57,45 @@
                     <h4 class="text-sm font-semibold text-slate-700 mb-3">Algorithm for 2D Generation</h4>
                     <div class="flex flex-wrap gap-3">
                         <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="hc" class="hidden peer">
+                            <input type="radio" name="algorithm" value="hc" class="hidden peer" {% if selected_algorithm == 'hc' %}checked{% endif %}>
                             <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
                                 Hill Climbing
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="sa" class="hidden peer" checked>
+                            <input type="radio" name="algorithm" value="sa" class="hidden peer" {% if selected_algorithm == 'sa' %}checked{% endif %}>
                             <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
                                 Simulated Annealing
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="mc" class="hidden peer">
+                            <input type="radio" name="algorithm" value="mc" class="hidden peer" {% if selected_algorithm == 'mc' %}checked{% endif %}>
                             <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
                                 Monte Carlo
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="remc" class="hidden peer">
+                            <input type="radio" name="algorithm" value="remc" class="hidden peer" {% if selected_algorithm == 'remc' %}checked{% endif %}>
                             <div class="px-5 py-2 rounded-lg bg-slate-100 text-slate-700 font-medium text-sm peer-checked:bg-blue-600 peer-checked:text-white hover:bg-slate-200 transition-all border border-transparent peer-checked:border-blue-600">
                                 Replica Exchange MC
                             </div>
                         </label>
                         <label class="cursor-pointer">
-                            <input type="radio" name="algorithm" value="ql" class="hidden peer">
+                            <input type="radio" name="algorithm" value="ql" class="hidden peer" {% if selected_algorithm == 'ql' %}checked{% endif %}>
                             <div class="px-5 py-2 rounded-lg bg-emerald-50 text-emerald-700 font-medium text-sm peer-checked:bg-emerald-600 peer-checked:text-white hover:bg-emerald-100 transition-all border border-emerald-200 peer-checked:border-emerald-600">
-                                ⚡ Q-Learning (RL)
+                                Advanced Deep Q-Learning (RL)
                             </div>
                         </label>
                     </div>
-                    <p class="text-xs text-slate-500 mt-3">Select the algorithm to optimize the 2D structure · <span class="text-emerald-600 font-medium">Q-Learning is recommended for proteins ≤ 25 AA</span></p>
+                    <p class="text-xs text-slate-500 mt-3">Select the algorithm to optimize the 2D structure.</p>
+                    <div class="mt-4 max-w-sm">
+                        <label class="text-sm font-semibold text-slate-700" for="trace_interval">Show structure every N steps</label>
+                        <input type="number" id="trace_interval" name="trace_interval"
+                               class="w-full mt-2 px-3 py-2 border border-slate-300 rounded text-sm"
+                               value="{{ algorithm_params.trace_interval|default:500 }}"
+                               min="1" step="1">
+                        <p class="text-xs text-slate-500 mt-2">Minimum 500 for classical algorithms; DQN can use 1 residue step.</p>
+                    </div>
                 </div>
             </form>
         </div>
@@ -108,6 +116,7 @@
                 <div class="w-full bg-slate-50 rounded-xl border border-slate-100 shadow-inner overflow-auto">
                     <svg id="svg-{{ forloop.counter }}" class="protein-svg block mx-auto"
                          data-structure="{{ struct.structure|safe }}"
+                         data-step-frames="{{ struct.step_frames|safe }}"
                          style="min-width:200px; min-height:200px;">
                     </svg>
                 </div>
@@ -126,6 +135,46 @@
                         <span class="text-sm font-medium text-slate-700">Start</span>
                     </div>
                 </div>
+                {% if struct.step_frames|length > 1 %}
+                <div class="step-explorer mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+                     data-svg-id="svg-{{ forloop.counter }}">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <div class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i data-lucide="route" class="size-4 text-blue-600"></i>
+                                Step Explorer
+                            </div>
+                            <div class="text-xs text-slate-500 mt-1">
+                                Interval: {{ struct.trace_interval }} | Frames: {{ struct.step_frames|length }}
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 text-sm">
+                            <div class="rounded-lg bg-slate-50 border border-slate-200 px-3 py-2">
+                                <span class="text-slate-500">Step</span>
+                                <span class="step-label block font-bold text-slate-900">-</span>
+                            </div>
+                            <div class="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+                                <span class="text-amber-700">Energy</span>
+                                <span class="energy-label block font-bold text-amber-700">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center">
+                        <div class="flex gap-2">
+                            <button type="button" class="step-prev rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" title="Previous step">
+                                <i data-lucide="chevron-left" class="size-4"></i>
+                            </button>
+                            <button type="button" class="step-play rounded-lg border border-blue-300 bg-blue-50 p-2 text-blue-700 hover:bg-blue-100" title="Play steps">
+                                <i data-lucide="play" class="size-4"></i>
+                            </button>
+                            <button type="button" class="step-next rounded-lg border border-slate-300 p-2 text-slate-700 hover:bg-slate-100" title="Next step">
+                                <i data-lucide="chevron-right" class="size-4"></i>
+                            </button>
+                        </div>
+                        <input type="range" class="step-slider w-full accent-blue-600" min="0" value="0">
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
             <!-- Info panel: full width below canvas -->
@@ -162,6 +211,40 @@
                             <i data-lucide="droplets" class="size-4"></i> H count
                         </div>
                         <div class="text-4xl font-extrabold text-purple-600 mt-1">{{ struct.hp_string|cut:"P"|length }}</div>
+                    </div>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 rounded-xl p-5 border border-blue-200">
+                        <div class="text-sm font-bold text-blue-900 mb-3 flex items-center gap-2">
+                            <i data-lucide="user" class="size-4"></i>
+                            Parameters Used
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            {% for param_name, param_value in struct.used_params.items %}
+                                {% if param_value != None %}
+                                <div>
+                                    <div class="text-xs font-bold text-blue-700 uppercase">{{ param_name }}</div>
+                                    <div class="text-lg font-extrabold text-blue-600">{{ param_value }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="bg-emerald-50 rounded-xl p-5 border border-emerald-200">
+                        <div class="text-sm font-bold text-emerald-900 mb-3 flex items-center gap-2">
+                            <i data-lucide="star" class="size-4"></i>
+                            Recommended for {{ struct.algorithm_label|default:"This Algorithm" }}
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            {% for param_name, param_value in struct.best_params.items %}
+                                {% if param_value != None %}
+                                <div>
+                                    <div class="text-xs font-bold text-emerald-700 uppercase">{{ param_name }}</div>
+                                    <div class="text-lg font-extrabold text-emerald-600">{{ param_value }}</div>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -231,23 +314,64 @@ document.addEventListener('DOMContentLoaded', function () {
     const CELL = 32;   // px per grid unit
     const R    = 13;   // node radius
     const PAD  = 24;   // canvas padding
+    const traceInput = document.querySelector('input[name="trace_interval"]');
 
-    document.querySelectorAll('.protein-svg').forEach(svg => {
-        // Parse structure data embedded as a JSON-like string from Django
-        let rawData = svg.getAttribute('data-structure');
-        let points;
+    function getSelectedAlgorithm() {
+        return document.querySelector('input[name="algorithm"]:checked')?.value || 'sa';
+    }
+
+    function updateTraceValidationMessage() {
+        if (!traceInput) return;
+        const selectedAlgo = getSelectedAlgorithm();
+        const minimum = selectedAlgo === 'ql' ? 1 : 500;
+        traceInput.setCustomValidity('');
+
+        if (traceInput.value && Number(traceInput.value) < minimum) {
+            const message = selectedAlgo === 'ql'
+                ? 'Enter a value of at least 1 for DQN construction steps.'
+                : 'Enter a value of at least 500 for classical algorithm steps.';
+            traceInput.setCustomValidity(message);
+        }
+    }
+
+    if (traceInput) {
+        traceInput.addEventListener('input', updateTraceValidationMessage);
+        traceInput.addEventListener('change', updateTraceValidationMessage);
+        traceInput.addEventListener('invalid', updateTraceValidationMessage);
+    }
+
+    document.querySelectorAll('input[name="algorithm"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (traceInput) {
+                if (radio.value === 'ql' && radio.checked) {
+                    traceInput.min = '1';
+                    traceInput.step = '1';
+                } else if (radio.checked) {
+                    traceInput.min = '500';
+                    traceInput.step = '500';
+                    if (Number(traceInput.value) < 500) traceInput.value = '500';
+                }
+            }
+            updateTraceValidationMessage();
+        });
+    });
+
+    function parseEmbeddedData(rawData) {
         try {
-            // Django serialises dicts with single quotes; convert to valid JSON
             rawData = rawData
                 .replace(/'/g, '"')
                 .replace(/True/g, 'true')
                 .replace(/False/g, 'false');
-            points = JSON.parse(rawData);
+            return JSON.parse(rawData);
         } catch(e) {
             console.error('SVG parse error:', e, rawData);
-            return;
+            return null;
         }
+    }
+
+    function renderProteinSvg(svg, points) {
         if (!points || points.length === 0) return;
+        svg.innerHTML = '';
 
         // --- Compute bounds ---
         const xs = points.map(p => p.x);
@@ -349,6 +473,79 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
             });
         }
+    }
+
+    document.querySelectorAll('.protein-svg').forEach(svg => {
+        const points = parseEmbeddedData(svg.getAttribute('data-structure'));
+        renderProteinSvg(svg, points);
+
+        const frames = parseEmbeddedData(svg.getAttribute('data-step-frames') || '[]') || [];
+        const explorer = document.querySelector(`.step-explorer[data-svg-id="${svg.id}"]`);
+        if (!explorer || frames.length === 0) return;
+
+        const slider = explorer.querySelector('.step-slider');
+        const prevBtn = explorer.querySelector('.step-prev');
+        const nextBtn = explorer.querySelector('.step-next');
+        const playBtn = explorer.querySelector('.step-play');
+        const stepLabel = explorer.querySelector('.step-label');
+        const energyLabel = explorer.querySelector('.energy-label');
+        let playTimer = null;
+
+        slider.max = String(frames.length - 1);
+
+        function setFrame(index) {
+            const safeIndex = Math.max(0, Math.min(frames.length - 1, Number(index)));
+            const frame = frames[safeIndex];
+            slider.value = String(safeIndex);
+            stepLabel.textContent = `${frame.label || 'Step'} ${frame.step}`;
+            energyLabel.textContent = frame.energy;
+            renderProteinSvg(svg, frame.structure);
+        }
+
+        function stopPlayback() {
+            if (playTimer) {
+                clearInterval(playTimer);
+                playTimer = null;
+                playBtn.innerHTML = '<i data-lucide="play" class="size-4"></i>';
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+
+        slider.addEventListener('input', () => {
+            stopPlayback();
+            setFrame(slider.value);
+        });
+
+        prevBtn.addEventListener('click', () => {
+            stopPlayback();
+            setFrame(Number(slider.value) - 1);
+        });
+
+        nextBtn.addEventListener('click', () => {
+            stopPlayback();
+            setFrame(Number(slider.value) + 1);
+        });
+
+        playBtn.addEventListener('click', () => {
+            if (playTimer) {
+                stopPlayback();
+                return;
+            }
+            playBtn.innerHTML = '<i data-lucide="pause" class="size-4"></i>';
+            if (window.lucide) window.lucide.createIcons();
+            playTimer = setInterval(() => {
+                const nextIndex = Number(slider.value) + 1;
+                if (nextIndex >= frames.length) {
+                    stopPlayback();
+                    setFrame(frames.length - 1);
+                } else {
+                    setFrame(nextIndex);
+                }
+            }, 450);
+        });
+
+        setFrame(frames.length - 1);
     });
+});
 </script>
 {% endblock %}
