@@ -1,77 +1,89 @@
-# Protein Classification with Deep Reinforcement Learning – Phase 1
+# Protein Classification with Deep Reinforcement Learning
 
 ## Project Overview
 
-This is the first phase of the project: a Django web app that allows users to submit a protein sequence in FASTA format and get predicted GO terms (Gene Ontology functional annotations). Currently, the GO terms are predicted using the DeepGO API. The app is structured to integrate additional models or APIs as needed.
+This project is a Django-based web platform for protein sequence analysis. It accepts one or more FASTA sequences and provides three main workflows:
 
-## How to Run
+- Functional annotation with Gene Ontology (GO) terms through the DeepGO API.
+- 2D HP lattice structure prediction with Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange Monte Carlo, Tabular Q-Learning experiments, and trained DQN inference.
+- 3D structure retrieval through AlphaFold DB, with ESMFold used as a fallback for sequences without an AlphaFold entry.
 
-1. Clone the repository:
+The 2D folding module compares classical heuristic optimization methods with reinforcement learning approaches. The final DQN model uses a constructive formulation: it builds the protein one residue at a time using relative actions (Forward, Left, Right) and a local rotation-invariant 2 x 21 x 21 grid representation.
+
+## Repository Structure
+
+- `protein_project/` - Django web application.
+- `protein_project/go_predictor/` - Main app with forms, views, templates, static files, and API integration.
+- `tests/` - Algorithm implementations, benchmark scripts, reports, and trained DQN inference module.
+- `model/` - Trained DQN weights used by the web interface.
+- `colab_export/` - Colab training scripts for the final and previous DQN models.
+- `reports/` - Project reports and presentation files.
+
+## Requirements
+
+Use Python 3.12 or newer. The project was generated with Django 6.0.2.
+
+Install dependencies from the repository root:
 
 ```bash
-git clone <REPO_URL>
-cd Protein-Classification-with-Deep-Reinforcement-Learning
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-2. Create and activate a virtual environment:
-
-Mac / Linux:
-
-```bash
-python3 -m venv venv
-source venv/bin/activate
-```
-
-Windows (PowerShell):
+On Windows PowerShell:
 
 ```powershell
-venv\\Scripts\\Activate.ps1
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-3. Install dependencies (Django):
+## How to Run the Web Platform
+
+From the repository root:
 
 ```bash
-pip install django
-```
-
-4. Run the development server:
-
-```bash
+cd protein_project
+python manage.py migrate
 python manage.py runserver
 ```
 
-5. Open your browser and go to:
+Open:
 
+```text
 http://127.0.0.1:8000/
-
-Submit a protein sequence in FASTA format and press "Predict GO Terms".
+```
 
 ## Example FASTA Input
 
-```
->TestProtein1
-MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ
-```
-
-## Example Output
-
-```
-GO:0008150
-GO:0003674
+```text
+>sp|P04637|P53_HUMAN Cellular tumor antigen p53
+MEEPQSDPSVEPPLSQETFSDLWKLLPENNVLSPLPSQAMDDLMLSPDDIEQWFTEDPGP
 ```
 
-## Next Steps
+## Main Features
 
-- Validate predictions with real protein sequences and benchmark performance.
-- Store input sequences and predicted GO terms in the database for analysis (model already implemented).
+- Parses multiple FASTA sequences and validates sequence lines.
+- Converts amino acid sequences into HP strings using the hydrophobic set `ACFILMVWY`.
+- Runs 2D HP folding algorithms with configurable hyperparameters.
+- Shows the final lattice conformation, HP string, energy, length, H-count, and step-by-step folding frames.
+- Calls DeepGO for GO prediction and groups terms by Biological Process, Molecular Function, and Cellular Component.
+- Retrieves 3D PDB structures from AlphaFold DB or predicts them through ESMFold when needed.
 
-## Recent Changes
+## Algorithm Notes
 
-- Translated all Italian comments, docstrings, error messages, and user interface text to English across the entire project.
-- Updated `views.py` with English comments and strings.
-- Modified `forms.py` labels and help text to English.
-- Translated HTML templates (`predict.html` and `structure_2d.html`) to English for consistency.
+The web interface exposes interactive defaults that may differ from controlled benchmark settings. For example, the Monte Carlo benchmark uses the script-level baseline temperature `T = 2.0`, while the web interface allows user configuration and defaults to `T = 5.0`. Similarly, REMC benchmark tables use 10 replicas for controlled runtime comparison, while the web default is 20 replicas.
 
-## Notes
+## Outputs and Reports
 
-This is Phase 1 of the full pipeline for protein classification using Deep Reinforcement Learning. Phase 2 will involve HP folding in 2D and reinforcement learning to refine functional predictions.
+Benchmark outputs and DQN training summaries are stored in `tests/`, including:
+
+- `convergence_summary.txt`
+- `remc_convergence_summary.txt`
+- `ql_convergence_summary.txt`
+- `dqn_report.txt`
+- `dqn_summary.csv`
+- `dqn_episode_log.csv`
+
+The final thesis document is maintained separately in the top-level `thesis/` directory.

@@ -1,0 +1,66 @@
+\chapter{Conclusion}
+\label{conclusion}
+
+This final chapter summarizes the primary outcomes and contributions of the project, reflects on the challenges encountered during development, and outlines potential directions for future research and system enhancement.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Final remarks}
+\label{conclusion:finalRemarks}
+
+This project successfully developed a comprehensive computational framework for protein analysis, integrating both structure prediction and functional annotation within a single user-accessible web platform. The system bridges the gap between raw biological sequences and complex structural and functional predictions, offering researchers and students an accessible tool that requires no local installation of heavy computational infrastructure.
+
+\subsection{Web platform}
+\label{conclusion:sub_web}
+
+The Django-based web platform was successfully designed and deployed, providing a clean, responsive interface that supports multiple 2D structure prediction algorithms alongside external deep learning API integration. The modular architecture decoupling the web request handler from the algorithm scripts proved effective: algorithms could be updated, replaced, or extended without modifying the web server code. The FASTA parser, hyperparameter controls, SVG-based structure visualization, step-by-step folding explorer, and error handling were all validated through systematic testing.
+
+\subsection{Classical optimization}
+\label{conclusion:sub_classical}
+
+A progressive suite of classical heuristic algorithms was implemented and rigorously benchmarked across 20 real UniProt protein sequences of 56--98 amino acids:
+
+\begin{itemize}
+    \item \textbf{Hill Climbing} proved fast and competitive at high iteration counts (achieving best energies of $-25$ to $-30$ at 100,000 iterations for H-rich sequences) but consistently stalled in local minima at lower budgets.
+    \item \textbf{Simulated Annealing} demonstrated a clear advantage over HC on average across the dataset (median improvement of $\approx 1.5$ energy units at 100,000 iterations), confirming that the Metropolis acceptance criterion and the exponential cooling schedule effectively prevent entrapment in local minima.
+    \item \textbf{Monte Carlo} (constant temperature) underperformed both HC and SA, validating the importance of adaptive temperature control for effective conformation space exploration.
+    \item \textbf{Replica Exchange Monte Carlo} achieved the strongest overall solution quality, with median best energy around $-24$, but at approximately 20--24$\times$ the computational cost of SA, making it most suitable when solution quality is paramount and runtime is not a constraint.
+\end{itemize}
+
+\subsection{Reinforcement learning}
+\label{conclusion:sub_rl}
+
+The introduction of Reinforcement Learning represented the most significant methodological advance of the project:
+
+\begin{itemize}
+    \item \textbf{Tabular Q-Learning} successfully learned folding policies for short sequences, demonstrating convergence and the ability to discover non-trivial conformations through $\varepsilon$-greedy exploration and Bellman updates. For sequences of up to $\approx 25$ residues, it provides a principled alternative to stochastic heuristics with theoretical convergence guarantees. For longer sequences (56--98 AA), it is outperformed by classical methods due to the exponential growth of the state space.
+    \item \textbf{Deep Q-Network (DQN)} (constructive implementation, \texttt{colab\_dqn\_final.py}): implemented in PyTorch using a constructive, relative-direction formulation. Rather than perturbing an existing straight-line conformation, the agent \textbf{builds the protein one residue at a time}, choosing relative directions (Forward, Left, Right) to place the next amino acid. The environment enforces self-avoiding walks: collisions terminate an episode with a strong penalty.
+
+    The state is represented as a rotation-invariant $2 \times 21 \times 21$ grid centered on the chain head and rotated so the current direction always points upward; channel 0 encodes Hydrophobic residues and channel 1 encodes Polar residues. This compact, local representation drastically reduces the effective state space and improves generalization across sequences of different lengths and H-content.
+
+    Training configuration used in the GPU-accelerated Colab implementation: dataset of 20 UniProt sequences (56--98 AA), 20,000 episodes, replay buffer capacity 100{,}000, mini-batch size 128, Adam optimizer with $\eta=10^{-3}$, $\gamma=0.99$, $\varepsilon$ decayed from 1.0 to 0.05, target-network updates every 1,000 optimization steps, Double DQN target selection, gradient clipping, and reward shaping for low-H-density proteins. Trained on CUDA devices with total training time 23,279.627 seconds ($\approx 6.47$ hours). Trained weights are saved to \texttt{dqn\_weights.pth}.
+    
+    Quantitative performance: median best energy across 20 proteins of $-18$, mean best energy $-16.9$, and range $-26$ (P06028) to $-3$ (P35321). Mean final episode energy was $-7.76$, mean reward was 7.75, and the mean training completion rate was 0.57. Greedy inference completed all 20 proteins with median greedy energy $-12$. While performance still trails REMC and remains slightly below the SA baseline, the constructive DQN demonstrates that learned policies can discover non-trivial conformations through reinforcement learning on local lattice representations. The approach validates the viability of DRL for this domain and establishes a foundation for policy-gradient methods, multi-rollout inference, and enhanced reward design.
+
+\end{itemize}
+
+Overall, the project validates the progressive hypothesis: stochastic methods with temperature control outperform greedy search; learned policies scale beyond the limitations of tabular methods; and spatial CNN representations provide a viable foundation for deep reinforcement learning on lattice protein models.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Future works}
+\label{conclusion:futureWorks}
+
+Several promising directions exist to extend and refine this work:
+
+\begin{itemize}
+    \item \textbf{DQN Training at Scale:} The most immediate next step is to train the DQN for a larger number of episodes (e.g., $10^5$--$10^6$) with GPU acceleration. Hyperparameter tuning (learning rate, batch size, replay buffer capacity, target network update frequency) using systematic search methods (e.g., Bayesian optimization) could substantially increase solution quality.
+
+    \item \textbf{Alternative DRL Architectures:} Beyond DQN, more recent algorithms such as Proximal Policy Optimization (PPO) or Soft Actor-Critic (SAC) could be explored. These policy-gradient methods offer better sample efficiency and stability for continuous-action environments, which may be beneficial for extended move sets.
+
+    \item \textbf{3D HP Model Extension:} Currently, the DRL agent operates within the constraints of the 2D HP lattice. A natural and scientifically significant progression is to extend the environment to a 3D cubic lattice (or a face-centered cubic lattice), incorporating a more realistic energy function with side-chain interactions, moving closer to state-of-the-art structure prediction.
+
+    \item \textbf{Database Integration and Analytics:} Persistently storing user-submitted sequences, their GO predictions, and their predicted structures in a relational database would enable longitudinal analysis, user history tracking, and the creation of a searchable internal dataset for research use.
+
+    \item \textbf{Validation with Experimental Data:} The structural predictions produced by all algorithms should be systematically compared against experimentally determined structures from the Protein Data Bank (PDB) using standard metrics such as the Template Modelling score (TM-score) or root mean square deviation (RMSD), to rigorously quantify real-world accuracy.
+
+    \item \textbf{Unified Structure-Function Model:} An ambitious future direction is to develop an end-to-end architecture where structural embeddings generated by the DQN (or a graph neural network operating on the lattice) are directly used as inputs to a local function prediction head, deeply integrating the structure-to-function relationship within a single, unified deep learning pipeline.
+\end{itemize}

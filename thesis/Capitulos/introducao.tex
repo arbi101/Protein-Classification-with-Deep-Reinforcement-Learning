@@ -1,0 +1,60 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+Proteins are the fundamental building blocks of life, executing a vast array of functions within living organisms, ranging from catalyzing metabolic reactions and DNA replication to providing structural support and transporting molecules. The specific function of a protein is inextricably linked to its three-dimensional (3D) structure, which is uniquely determined by its one-dimensional sequence of amino acids. Understanding how this linear sequence spontaneously folds into a complex, functional 3D conformation remains one of the most significant challenges in computational biology and bioinformatics widely known as the \textbf{protein folding problem}.
+
+The importance of solving this problem cannot be overstated. Misfolded proteins are directly implicated in a range of severe diseases, including Alzheimer's disease, Parkinson's disease, and various cancers. Conversely, successfully predicting a protein's native structure from its sequence would accelerate drug discovery, enzyme engineering, and the design of novel biomaterials. The exponential growth of sequencing data driven by advances such as next-generation sequencing has created a vast \textit{sequence-structure gap}: millions of protein sequences have been deposited in databases like UniProt~\cite{uniprot2023}, yet experimentally determined 3D structures (deposited in the Protein Data Bank, PDB~\cite{berman2000protein}) remain orders of magnitude fewer.
+
+To fully comprehend the scope of this project, several foundational concepts must be introduced:
+
+\begin{itemize}
+    \item \textbf{The Protein Folding Problem:} The challenge of computationally predicting the native, energy-minimized 3D structure of a protein based solely on its amino acid sequence. Solving it with high accuracy, as demonstrated by AlphaFold2~\cite{jumper2021highly}, represents a landmark achievement of modern computational biology.
+    \item \textbf{The HP (Hydrophobic-Polar) Model:} A simplified lattice-based model used in computational biology to study protein folding. It abstracts the 20 amino acids into two types Hydrophobic (H) and Polar (P) capturing the dominant driving force of folding: the burial of hydrophobic residues away from the aqueous solvent~\cite{dill1985theory}. Despite its simplicity, finding the minimum-energy configuration in the HP model is NP-complete~\cite{crescenzi1998complexity}.
+    \item \textbf{Heuristic Optimization Algorithms:} Classical computational techniques (Hill Climbing, Simulated Annealing, Monte Carlo methods) used to find approximate solutions to computationally intractable energy minimization problems by stochastic exploration of the conformation space~\cite{metropolis1953equation,kirkpatrick1983optimization,hukushima1996exchange}.
+    \item \textbf{Reinforcement Learning (RL) and Deep Reinforcement Learning (DRL):} A branch of machine learning where an agent learns optimal decision-making by interacting with an environment to maximize cumulative reward~\cite{sutton2018reinforcement,watkins1992qlearning}. Deep Q-Networks (DQN), which use Convolutional Neural Networks as function approximators, extend this paradigm to handle the high-dimensional state spaces arising from realistic protein sequences~\cite{mnih2015human}.
+    \item \textbf{Gene Ontology (GO) and Function Prediction:} A standardized vocabulary describing the biological functions of gene products, organized into three domains: Biological Process, Molecular Function, and Cellular Component~\cite{ashburner2000gene}. Tools such as DeepGO~\cite{kulmanov2018deepgo} use deep learning to predict GO terms directly from protein sequences.
+    \item \textbf{3D Structure Retrieval:} State-of-the-art systems such as AlphaFold~\cite{jumper2021highly} and ESMFold~\cite{lin2023evolutionary} can predict full-atom 3D protein structures at near-experimental accuracy and expose their predictions through publicly accessible APIs.
+\end{itemize}
+
+\section{Vision and scope}
+\label{intro:sec_vision}
+
+Traditionally, determining the structure of a protein relies on experimental techniques such as X-ray crystallography and cryogenic electron microscopy (cryo-EM). While highly accurate, these methods are exceptionally resource-intensive, expensive, and time-consuming. The growing sequence-structure gap necessitates the development of efficient computational methods capable of predicting protein structures and functions directly from amino acid sequences.
+
+The primary vision of this project is to bridge this gap by developing a comprehensive, user-friendly web application built using the Django framework~\cite{django2024} that integrates multiple computational methods for both protein structure and function prediction. The system is designed to be accessible to researchers and students without requiring local computational infrastructure.
+
+Specifically, the scope of the project focuses on two main pillars:
+
+\begin{enumerate}
+    \item \textbf{2D Structure Prediction (HP Model):} The implementation, benchmarking, and comparison of a progressive suite of algorithms to solve the 2D HP protein folding problem. This includes classical stochastic optimization methods Hill Climbing (HC), Simulated Annealing (SA), Monte Carlo (MC), and Replica Exchange Monte Carlo (REMC) alongside modern Artificial Intelligence approaches: Tabular Q-Learning and a custom Convolutional Deep Q-Network (DQN) implemented in PyTorch~\cite{paszke2019pytorch}.
+
+    \item \textbf{Function Prediction and 3D Integration:} The integration of state-of-the-art Deep Learning APIs specifically DeepGO to predict functional Gene Ontology (GO) terms directly from FASTA sequences. Additionally, the system serves as a bridge to 3D structure prediction tools (AlphaFold DB~\cite{varadi2022alphafold} and ESMFold), enabling users to retrieve and visualize known or predicted 3D structures without requiring local installations of these computationally demanding models.
+\end{enumerate}
+
+\section{Project schedule}
+\label{intro:sec_schedule}
+
+The development of this project was organized into three structured phases, ensuring a systematic and incremental approach:
+
+\begin{itemize}
+    \item \textbf{Phase 1 --- Web Application and Function Prediction:} The initial phase focused on developing the core Django web architecture, designing the user interface, and integrating the DeepGO external API for Gene Ontology functional annotations. This phase established the basic sequence processing pipeline and the FASTA parsing utilities.
+
+    \item \textbf{Phase 2 --- Classical Optimization Implementation:} This phase involved the design and benchmarking of classical heuristic algorithms (HC, SA, MC, REMC) to solve the 2D HP folding problem. A shared move set (end-flip, kink-jump, crankshaft, pivot) was implemented and validated, and a comparative benchmarking study was conducted across 20 real UniProt protein sequences of 56--98 amino acids.
+
+    \item \textbf{Phase 3 --- Reinforcement Learning Integration:} The final phase introduced AI-based approaches: first Tabular Q-Learning (suitable for short sequences) and then a custom CNN-based Deep Q-Network (DQN) implemented in PyTorch. The final DQN uses a constructive formulation with a local $2 \times 21 \times 21$ rotation-invariant grid representation and relative directional actions. The DQN was trained and validated against the classical baseline methods.
+\end{itemize}
+
+\section{Organization of the report}
+\label{intro:sec_organization}
+
+The remainder of this document is organized as follows:
+
+\begin{description}
+    \item[Chapter 2 --- Theoretical Background:] Provides a formal review of the HP model, the neighbour and energy definitions, the shared move set, and each optimization algorithm (HC, SA, MC/REMC, Tabular Q-Learning, DQN), including their mathematical formulations and pseudocode.
+
+    \item[Chapter 3 --- Web Platform:] Details the requirement analysis, user interface prototype, technical implementation of the Django web application, and the testing procedures for the integrated system.
+
+    \item[Chapter 4 --- Algorithm Development:] Describes the full 2D structure prediction pipeline, the specific implementation details of all algorithms, the DQN architecture and training configuration, and a comparative analysis of the benchmarking results across all methods.
+
+    \item[Chapter 5 --- Conclusion and Future Work:] Summarizes the main achievements of the project, discusses current limitations, and outlines potential avenues for future development and research.
+\end{description}

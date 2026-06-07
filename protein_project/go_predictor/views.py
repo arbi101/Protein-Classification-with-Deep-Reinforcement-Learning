@@ -10,7 +10,6 @@ Handles three types of user requests:
 from django.shortcuts import render
 from .forms import ProteinSearchForm
 import requests
-import random
 import math
 import sys
 import os
@@ -50,7 +49,7 @@ BEST_ALGORITHM_PARAMS = {
         'T Max': f"{ALGORITHM_DEFAULTS['remc_tmax']}",
     },
     'ql': {
-        'Model': 'Advanced DQN',
+        'Model': 'DQN',
         'Rollouts': ALGORITHM_DEFAULTS['dqn_rollouts'],
         'Construction Step Interval': 1,
     },
@@ -61,13 +60,13 @@ ALGORITHM_LABELS = {
     'sa': 'Simulated Annealing',
     'mc': 'Monte Carlo',
     'remc': 'Replica Exchange MC',
-    'ql': 'Advanced Deep Q-Learning',
+    'ql': 'Deep Q-Learning',
 }
 
 
 def build_used_params(algorithm, params):
     return {
-        'Model': 'Advanced DQN' if algorithm == 'ql' else None,
+        'Model': 'DQN' if algorithm == 'ql' else None,
         'Iterations': (
             params['hc_iterations'] if algorithm == 'hc'
             else params['sa_iterations'] if algorithm == 'sa'
@@ -104,6 +103,81 @@ def clamp_trace_interval(algorithm, requested_interval, total_steps, max_frames=
     requested_interval = max(min_interval, int(requested_interval))
     frame_limited_interval = max(1, math.ceil(max(1, total_steps) / max_frames))
     return max(requested_interval, frame_limited_interval), max_frames
+
+
+def parse_int_param(post_data, name, default, minimum=None, maximum=None):
+    value = int(post_data.get(name, default))
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}.")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be at most {maximum}.")
+    return value
+
+
+def parse_float_param(post_data, name, default, minimum=None, maximum=None):
+    value = float(post_data.get(name, default))
+    if minimum is not None and value < minimum:
+        raise ValueError(f"{name} must be at least {minimum}.")
+    if maximum is not None and value > maximum:
+        raise ValueError(f"{name} must be at most {maximum}.")
+    return value
+
+
+def parse_structure_params(post_data):
+    return {
+        'hc_iterations': parse_int_param(
+            post_data, 'hc_iterations', ALGORITHM_DEFAULTS['hc_iterations'],
+            minimum=1000,
+        ),
+        'sa_iterations': parse_int_param(
+            post_data, 'sa_iterations', ALGORITHM_DEFAULTS['sa_iterations'],
+            minimum=1000,
+        ),
+        'sa_initial_t': parse_float_param(
+            post_data, 'sa_initial_t', ALGORITHM_DEFAULTS['sa_initial_t'],
+            minimum=0.1,
+        ),
+        'sa_final_t': parse_float_param(
+            post_data, 'sa_final_t', ALGORITHM_DEFAULTS['sa_final_t'],
+            minimum=0.0001,
+        ),
+        'mc_iterations': parse_int_param(
+            post_data, 'mc_iterations', ALGORITHM_DEFAULTS['mc_iterations'],
+            minimum=1000,
+        ),
+        'mc_temperature': parse_float_param(
+            post_data, 'mc_temperature', ALGORITHM_DEFAULTS['mc_temperature'],
+            minimum=0.1,
+        ),
+        'remc_iterations': parse_int_param(
+            post_data, 'remc_iterations', ALGORITHM_DEFAULTS['remc_iterations'],
+            minimum=1000,
+        ),
+        'remc_replicas': parse_int_param(
+            post_data, 'remc_replicas', ALGORITHM_DEFAULTS['remc_replicas'],
+            minimum=2, maximum=30,
+        ),
+        'remc_swap': parse_int_param(
+            post_data, 'remc_swap', ALGORITHM_DEFAULTS['remc_swap'],
+            minimum=50,
+        ),
+        'remc_tmin': parse_float_param(
+            post_data, 'remc_tmin', ALGORITHM_DEFAULTS['remc_tmin'],
+            minimum=0.01,
+        ),
+        'remc_tmax': parse_float_param(
+            post_data, 'remc_tmax', ALGORITHM_DEFAULTS['remc_tmax'],
+            minimum=5,
+        ),
+        'dqn_rollouts': parse_int_param(
+            post_data, 'ql_steps', ALGORITHM_DEFAULTS['dqn_rollouts'],
+            minimum=1, maximum=300,
+        ),
+        'trace_interval': parse_int_param(
+            post_data, 'trace_interval', ALGORITHM_DEFAULTS['trace_interval'],
+            minimum=1,
+        ),
+    }
 
 
 def positions_to_structure(positions, hp_string):
@@ -159,22 +233,21 @@ try:
     from test_sa   import generate_2d_structure_sa       as run_sa    # Simulated Annealing
     from test_mc   import generate_2d_structure_mc       as run_mc    # Monte Carlo
     from test_remc import generate_2d_structure_remc     as run_remc  # Replica Exchange MC
-    from test_ql   import generate_2d_structure_ql       as _run_ql_raw  # Tabular Q-Learning (raw)
-    from agent_dqn_advanced import run_dqn_advanced_inference         # Advanced DQN inference
+    from agent_dqn_model import run_dqn_inference                    # DQN inference
 
-    # Absolute path to the Colab-trained advanced DQN weights file
-    dqn_weights_path = os.path.join(model_dir, 'dqn_advanced_weights.pth')
+    # Absolute path to the Colab-trained DQN weights file
+    dqn_weights_path = os.path.join(model_dir, 'dqn_weights.pth')
 
     def run_ql(hp_string, **kwargs):
         """
-        Wrapper that replaces slow tabular Q-Learning with advanced DQN
+        Wrapper that replaces slow tabular Q-Learning with DQN
         inference for real-time web use.
         """
         max_rollouts = kwargs.get(
             'max_steps_per_episode',
             kwargs.get('steps', ALGORITHM_DEFAULTS['dqn_rollouts']),
         )
-        result = run_dqn_advanced_inference(
+        result = run_dqn_inference(
             hp_string,
             dqn_weights_path,
             max_rollouts=max_rollouts,
@@ -314,51 +387,25 @@ def predict_go(request):
                 # Parse all algorithm hyperparameters from the POST form.
                 # Use try/except to handle invalid (non-numeric) input gracefully.
                 try:
-                    hc_iterations   = int(request.POST.get('hc_iterations', ALGORITHM_DEFAULTS['hc_iterations']))
-                    sa_iterations   = int(request.POST.get('sa_iterations', ALGORITHM_DEFAULTS['sa_iterations']))
-                    sa_initial_t    = float(request.POST.get('sa_initial_t', ALGORITHM_DEFAULTS['sa_initial_t']))
-                    sa_final_t      = float(request.POST.get('sa_final_t', ALGORITHM_DEFAULTS['sa_final_t']))
-                    mc_iterations   = int(request.POST.get('mc_iterations', ALGORITHM_DEFAULTS['mc_iterations']))
-                    mc_temperature  = float(request.POST.get('mc_temperature', ALGORITHM_DEFAULTS['mc_temperature']))
-                    remc_iterations = int(request.POST.get('remc_iterations', ALGORITHM_DEFAULTS['remc_iterations']))
-                    remc_replicas   = int(request.POST.get('remc_replicas', ALGORITHM_DEFAULTS['remc_replicas']))
-                    remc_swap       = int(request.POST.get('remc_swap', ALGORITHM_DEFAULTS['remc_swap']))
-                    remc_tmin       = float(request.POST.get('remc_tmin', ALGORITHM_DEFAULTS['remc_tmin']))
-                    remc_tmax       = float(request.POST.get('remc_tmax', ALGORITHM_DEFAULTS['remc_tmax']))
-                    ql_steps        = int(request.POST.get('ql_steps', ALGORITHM_DEFAULTS['dqn_rollouts']))
-                    trace_interval  = int(request.POST.get('trace_interval', ALGORITHM_DEFAULTS['trace_interval']))
+                    algorithm_params = parse_structure_params(request.POST)
                 except (ValueError, TypeError):
                     # If any value is invalid, fall back to safe defaults
-                    error_message = "Invalid hyperparameter values. Using defaults."
-                    hc_iterations   = ALGORITHM_DEFAULTS['hc_iterations']
-                    sa_iterations   = ALGORITHM_DEFAULTS['sa_iterations']
-                    sa_initial_t    = ALGORITHM_DEFAULTS['sa_initial_t']
-                    sa_final_t      = ALGORITHM_DEFAULTS['sa_final_t']
-                    mc_iterations   = ALGORITHM_DEFAULTS['mc_iterations']
-                    mc_temperature  = ALGORITHM_DEFAULTS['mc_temperature']
-                    remc_iterations = ALGORITHM_DEFAULTS['remc_iterations']
-                    remc_replicas   = ALGORITHM_DEFAULTS['remc_replicas']
-                    remc_swap       = ALGORITHM_DEFAULTS['remc_swap']
-                    remc_tmin       = ALGORITHM_DEFAULTS['remc_tmin']
-                    remc_tmax       = ALGORITHM_DEFAULTS['remc_tmax']
-                    ql_steps        = ALGORITHM_DEFAULTS['dqn_rollouts']
-                    trace_interval  = ALGORITHM_DEFAULTS['trace_interval']
+                    error_message = "Invalid parameter values. Using defaults."
+                    algorithm_params = ALGORITHM_DEFAULTS.copy()
 
-                algorithm_params = {
-                    'hc_iterations': hc_iterations,
-                    'sa_iterations': sa_iterations,
-                    'sa_initial_t': sa_initial_t,
-                    'sa_final_t': sa_final_t,
-                    'mc_iterations': mc_iterations,
-                    'mc_temperature': mc_temperature,
-                    'remc_iterations': remc_iterations,
-                    'remc_replicas': remc_replicas,
-                    'remc_swap': remc_swap,
-                    'remc_tmin': remc_tmin,
-                    'remc_tmax': remc_tmax,
-                    'dqn_rollouts': ql_steps,
-                    'trace_interval': trace_interval,
-                }
+                hc_iterations   = algorithm_params['hc_iterations']
+                sa_iterations   = algorithm_params['sa_iterations']
+                sa_initial_t    = algorithm_params['sa_initial_t']
+                sa_final_t      = algorithm_params['sa_final_t']
+                mc_iterations   = algorithm_params['mc_iterations']
+                mc_temperature  = algorithm_params['mc_temperature']
+                remc_iterations = algorithm_params['remc_iterations']
+                remc_replicas   = algorithm_params['remc_replicas']
+                remc_swap       = algorithm_params['remc_swap']
+                remc_tmin       = algorithm_params['remc_tmin']
+                remc_tmax       = algorithm_params['remc_tmax']
+                ql_steps        = algorithm_params['dqn_rollouts']
+                trace_interval  = algorithm_params['trace_interval']
 
                 if sequences:
                     # Process at most 5 sequences per request (performance limit)
@@ -483,7 +530,7 @@ def predict_go(request):
 
                     # If BOTH AlphaFold and ESMFold failed for all sequences
                     if not any(res['pdb_url'] or res['pdb_data'] for res in alphafold_results):
-                        error_message = "Could not generate 3D structures. The sequences might be too long or malformatted."
+                        error_message = "Could not generate 3D structures. The sequences might be too long or incorrectly formatted."
                 else:
                     error_message = "Please enter valid FASTA sequences."
 
@@ -506,30 +553,6 @@ def predict_go(request):
         'algorithm_params':   algorithm_params,
         'year':               year
     })
-
-
-# ── Legacy demo function (not used in production) ─────────────────────────────
-
-def fake_search(query):
-    """
-    Returns hardcoded fake GO data for UI testing purposes.
-    Not used in the live application — kept for development reference.
-    """
-    return {
-        'protein': {'name': 'Tumor protein p53', 'description': 'Tumor suppressor'},
-        'categories': [
-            {'title': 'Biological Processes', 'subtitle': 'Biological Process',
-             'terms': [{'go': 'GO:0006915', 'label': 'apoptotic process'},
-                       {'go': 'GO:0006974', 'label': 'cellular response to DNA damage stimulus'},
-                       {'go': 'GO:0007050', 'label': 'cell cycle arrest'}]},
-            {'title': 'Molecular Functions', 'subtitle': 'Molecular Function',
-             'terms': [{'go': 'GO:0003677', 'label': 'DNA binding'},
-                       {'go': 'GO:0003700', 'label': 'DNA-binding transcription factor activity'}]},
-            {'title': 'Cellular Components', 'subtitle': 'Cellular Component',
-             'terms': [{'go': 'GO:0005634', 'label': 'nucleus'},
-                       {'go': 'GO:0005737', 'label': 'cytoplasm'}]}
-        ]
-    }
 
 
 # ── FASTA parser ──────────────────────────────────────────────────────────────
@@ -599,155 +622,6 @@ def sequence_to_hp(sequence):
         else:
             hp_string += 'P'
     return hp_string
-
-
-# ── Secondary view: structure_2d (standalone page) ────────────────────────────
-
-def structure_2d(request):
-    """
-    Alternative view for a dedicated 2D structure prediction page.
-    Functionally identical to the 'structure' branch of predict_go(),
-    but renders a different template ('structure_2d.html').
-    Useful if the UI separates GO prediction and structure prediction
-    into different pages.
-    """
-    structures = []
-    alphafold_results = []
-    error_message = None
-    selected_algorithm = 'sa'
-    algorithm_params = ALGORITHM_DEFAULTS.copy()
-
-    if request.method == 'POST':
-        form = ProteinSearchForm(request.POST)
-        if form.is_valid():
-            fasta_str          = form.cleaned_data['fasta_sequence'].strip()
-            action             = request.POST.get('action')
-            selected_algorithm = request.POST.get('algorithm', 'sa')
-            sequences          = parse_fasta(fasta_str)
-
-            if action == 'structure' or not action:
-                algorithm = request.POST.get('algorithm', 'sa')
-                try:
-                    trace_interval = int(request.POST.get('trace_interval', ALGORITHM_DEFAULTS['trace_interval']))
-                except (ValueError, TypeError):
-                    trace_interval = ALGORITHM_DEFAULTS['trace_interval']
-                algorithm_params['trace_interval'] = trace_interval
-                if sequences:
-                    for seq_data in sequences[:5]:
-                        sequence  = seq_data['sequence']
-                        hp_string = sequence_to_hp(sequence)
-                        total_steps = get_algorithm_budget(algorithm, algorithm_params, hp_string)
-                        effective_trace_interval, max_trace_frames = clamp_trace_interval(
-                            algorithm,
-                            trace_interval,
-                            total_steps,
-                        )
-                        algorithm_params['trace_interval'] = effective_trace_interval
-
-                        # Run the selected algorithm with default parameters
-                        if algorithm == 'hc':
-                            positions, energy, trace_frames = run_hc(
-                                hp_string,
-                                iterations=ALGORITHM_DEFAULTS['hc_iterations'],
-                                return_trace=True,
-                                trace_interval=effective_trace_interval,
-                                max_trace_frames=max_trace_frames,
-                            )
-                        elif algorithm == 'mc':
-                            positions, energy, trace_frames = run_mc(
-                                hp_string,
-                                iterations=ALGORITHM_DEFAULTS['mc_iterations'],
-                                temperature=ALGORITHM_DEFAULTS['mc_temperature'],
-                                return_trace=True,
-                                trace_interval=effective_trace_interval,
-                                max_trace_frames=max_trace_frames,
-                            )
-                        elif algorithm == 'remc':
-                            positions, energy, trace_frames = run_remc(
-                                hp_string,
-                                iterations=ALGORITHM_DEFAULTS['remc_iterations'],
-                                num_replicas=ALGORITHM_DEFAULTS['remc_replicas'],
-                                t_min=ALGORITHM_DEFAULTS['remc_tmin'],
-                                t_max=ALGORITHM_DEFAULTS['remc_tmax'],
-                                swap_interval=ALGORITHM_DEFAULTS['remc_swap'],
-                                return_trace=True,
-                                trace_interval=effective_trace_interval,
-                                max_trace_frames=max_trace_frames,
-                            )
-                        elif algorithm == 'ql':
-                            positions, energy, trace_frames = run_ql(
-                                hp_string,
-                                max_steps_per_episode=ALGORITHM_DEFAULTS['dqn_rollouts'],
-                                return_trace=True,
-                                trace_interval=effective_trace_interval,
-                                max_trace_frames=max_trace_frames,
-                            )
-                        else:
-                            positions, energy, trace_frames = run_sa(
-                                hp_string,
-                                iterations=ALGORITHM_DEFAULTS['sa_iterations'],
-                                initial_t=ALGORITHM_DEFAULTS['sa_initial_t'],
-                                final_t=ALGORITHM_DEFAULTS['sa_final_t'],
-                                return_trace=True,
-                                trace_interval=effective_trace_interval,
-                                max_trace_frames=max_trace_frames,
-                            )
-
-                        # Compute bounding box for SVG scaling
-                        structure, width, height = positions_to_structure(positions, hp_string)
-                        step_frames = build_step_frames(trace_frames, hp_string, algorithm)
-                        structures.append({
-                            'name': seq_data['header'] or f'Sequence {len(structures)+1}',
-                            'structure': structure, 'hp_string': hp_string,
-                            'energy': energy, 'grid_width': width, 'grid_height': height,
-                            'algorithm': algorithm,
-                            'algorithm_label': ALGORITHM_LABELS.get(algorithm, algorithm.upper()),
-                            'used_params': build_used_params(algorithm, algorithm_params),
-                            'best_params': BEST_ALGORITHM_PARAMS.get(algorithm, {}),
-                            'step_frames': step_frames,
-                            'trace_interval': effective_trace_interval,
-                            'total_steps': total_steps,
-                        })
-                else:
-                    error_message = "Enter valid FASTA sequences."
-
-            elif action == 'alphafold':
-                if sequences:
-                    for seq_data in sequences[:5]:
-                        header    = seq_data['header']; sequence = seq_data['sequence']
-                        uniprot_id = get_uniprot_id_from_fasta(header)
-                        pdb_url = pdb_data = source = None
-
-                        # Try AlphaFold DB first, fall back to ESMFold
-                        if uniprot_id:
-                            pdb_url = fetch_alphafold_pdb(uniprot_id)
-                            if pdb_url: source = "AlphaFold DB"
-                        if not pdb_url:
-                            pdb_data = fetch_esmfold_pdb(sequence)
-                            if pdb_data: source = "ESMFold API"
-
-                        alphafold_results.append({
-                            'name': header or f'Sequence {len(alphafold_results)+1}',
-                            'uniprot_id': uniprot_id, 'pdb_url': pdb_url,
-                            'pdb_data': pdb_data, 'source': source
-                        })
-                    if not any(r['pdb_url'] or r['pdb_data'] for r in alphafold_results):
-                        error_message = "Could not generate 3D structures."
-                else:
-                    error_message = "Please enter valid FASTA sequences."
-    else:
-        form = ProteinSearchForm()
-
-    from datetime import datetime
-    year = datetime.utcnow().year
-    return render(request, 'go_predictor/structure_2d.html', {
-        'form': form, 'structures': structures,
-        'alphafold_results': alphafold_results,
-        'error_message': error_message,
-        'selected_algorithm': selected_algorithm,
-        'algorithm_params': algorithm_params,
-        'year': year
-    })
 
 
 # ── DeepGO API caller ─────────────────────────────────────────────────────────

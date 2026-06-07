@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1000" viewBox="0 0 2000 1000">
+  <defs>
+    <style>
+      .title { font: 700 42px Arial, Helvetica, sans-serif; fill: #242424; }
+      .subtitle { font: italic 24px Arial, Helvetica, sans-serif; fill: #4a4a4a; }
+      .box-title { font: 700 23px Arial, Helvetica, sans-serif; fill: #242424; }
+      .box-text { font: 700 22px Arial, Helvetica, sans-serif; fill: #242424; }
+      .small-title { font: 700 22px Arial, Helvetica, sans-serif; fill: #242424; }
+      .small-text { font: 700 20px Arial, Helvetica, sans-serif; fill: #242424; }
+      .tiny { font: 18px Arial, Helvetica, sans-serif; fill: #4a4a4a; }
+      .box { stroke: #222; stroke-width: 4; rx: 12; ry: 12; }
+      .note { fill: #eeeeee; stroke: #222; stroke-width: 3; rx: 10; ry: 10; }
+      .arrow { fill: none; stroke: #222; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="10" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#222"/>
+    </marker>
+  </defs>
+
+  <rect width="2000" height="1000" fill="#ffffff"/>
+
+  <text x="1000" y="105" text-anchor="middle" class="title">Constructive DQN Architecture</text>
+  <text x="1000" y="185" text-anchor="middle" class="subtitle">The agent builds the HP chain residue-by-residue using relative actions.</text>
+
+  <!-- Main network flow -->
+  <rect x="35" y="315" width="245" height="205" class="box" fill="#d8e9fb"/>
+  <text x="157.5" y="390" text-anchor="middle" class="box-title">Input State</text>
+  <text x="157.5" y="420" text-anchor="middle" class="box-text">2 x 21 x 21</text>
+  <text x="157.5" y="450" text-anchor="middle" class="box-text">H/P channels</text>
+  <text x="157.5" y="480" text-anchor="middle" class="tiny">rotation-invariant grid</text>
+
+  <path d="M285 417 L330 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="335" y="315" width="250" height="205" class="box" fill="#d9f1d9"/>
+  <text x="460" y="382" text-anchor="middle" class="box-title">Conv2D + ReLU</text>
+  <text x="460" y="414" text-anchor="middle" class="box-text">2 -> 32</text>
+  <text x="460" y="444" text-anchor="middle" class="box-text">3 x 3, padding 1</text>
+  <text x="460" y="474" text-anchor="middle" class="tiny">output: 32 x 21 x 21</text>
+
+  <path d="M590 417 L635 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="640" y="315" width="250" height="205" class="box" fill="#d9f1d9"/>
+  <text x="765" y="382" text-anchor="middle" class="box-title">Conv2D + ReLU</text>
+  <text x="765" y="414" text-anchor="middle" class="box-text">32 -> 64</text>
+  <text x="765" y="444" text-anchor="middle" class="box-text">3 x 3, padding 1</text>
+  <text x="765" y="474" text-anchor="middle" class="tiny">output: 64 x 21 x 21</text>
+
+  <path d="M895 417 L940 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="945" y="315" width="250" height="205" class="box" fill="#d9f1d9"/>
+  <text x="1070" y="382" text-anchor="middle" class="box-title">Conv2D + ReLU</text>
+  <text x="1070" y="414" text-anchor="middle" class="box-text">64 -> 64</text>
+  <text x="1070" y="444" text-anchor="middle" class="box-text">3 x 3, padding 1</text>
+  <text x="1070" y="474" text-anchor="middle" class="tiny">output: 64 x 21 x 21</text>
+
+  <path d="M1200 417 L1245 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="1250" y="315" width="210" height="205" class="box" fill="#fff2b8"/>
+  <text x="1355" y="395" text-anchor="middle" class="box-title">Flatten</text>
+  <text x="1355" y="427" text-anchor="middle" class="box-text">28,224</text>
+  <text x="1355" y="457" text-anchor="middle" class="box-text">features</text>
+
+  <path d="M1465 417 L1510 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="1515" y="315" width="210" height="205" class="box" fill="#f9dfc8"/>
+  <text x="1620" y="390" text-anchor="middle" class="box-title">FC + ReLU</text>
+  <text x="1620" y="423" text-anchor="middle" class="box-text">28,224 -> 256</text>
+  <text x="1620" y="456" text-anchor="middle" class="tiny">hidden units</text>
+
+  <path d="M1730 417 L1775 417" class="arrow" marker-end="url(#arrowhead)"/>
+
+  <rect x="1780" y="315" width="185" height="205" class="box" fill="#f7d4df"/>
+  <text x="1872.5" y="382" text-anchor="middle" class="box-title">Output</text>
+  <text x="1872.5" y="415" text-anchor="middle" class="box-text">256 -> 3</text>
+  <text x="1872.5" y="445" text-anchor="middle" class="box-text">Q-values</text>
+  <text x="1872.5" y="475" text-anchor="middle" class="tiny">Forward / Left / Right</text>
+
+  <!-- Training details -->
+  <rect x="215" y="655" width="315" height="145" class="note"/>
+  <text x="372.5" y="712" text-anchor="middle" class="small-title">Replay Buffer</text>
+  <text x="372.5" y="745" text-anchor="middle" class="small-text">100,000 transitions</text>
+
+  <rect x="590" y="655" width="315" height="145" class="note"/>
+  <text x="747.5" y="706" text-anchor="middle" class="small-title">Target Network</text>
+  <text x="747.5" y="739" text-anchor="middle" class="small-text">sync every 1,000</text>
+  <text x="747.5" y="768" text-anchor="middle" class="small-text">optimization steps</text>
+
+  <rect x="965" y="655" width="315" height="145" class="note"/>
+  <text x="1122.5" y="706" text-anchor="middle" class="small-title">Exploration</text>
+  <text x="1122.5" y="739" text-anchor="middle" class="small-text">epsilon-greedy</text>
+  <text x="1122.5" y="768" text-anchor="middle" class="small-text">1.0 -> 0.05</text>
+
+  <rect x="1340" y="655" width="315" height="145" class="note"/>
+  <text x="1497.5" y="695" text-anchor="middle" class="small-title">Stabilization</text>
+  <text x="1497.5" y="728" text-anchor="middle" class="small-text">Double DQN</text>
+  <text x="1497.5" y="757" text-anchor="middle" class="small-text">gradient clipping = 10</text>
+
+  <text x="1000" y="885" text-anchor="middle" class="tiny">Training setup: batch size 128, gamma = 0.99, learning rate = 0.001, 20,000 episodes.</text>
+</svg>

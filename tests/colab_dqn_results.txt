@@ -423,7 +423,7 @@ Best energies found during training for each sequence:
   Len 61: -8
   Len 76: -8
   Len 92: -15
-Model weights saved to 'dqn_advanced_weights.pth'
+Model weights saved to 'dqn_weights.pth'
 
 --- Evaluation on Unseen/Large Protein ---
 Testing Constructive DQN on sequence length 76...

@@ -283,7 +283,7 @@ def generate_2d_structure_ql(
         Q(s,a) ← Q(s,a) + α [ R(s,a) + γ · max_a' Q(s',a') − Q(s,a) ]
 
     Reward design:
-      - R = E_old − E_new  (positive if energy decreased = improved)
+      - R = E_old − E_new  (positive if energy decreased)
       - R = −1             (negative if the move was invalid/collision)
 
     Parameters
@@ -440,7 +440,7 @@ def exploit_q_table(hp_string, q_table, steps=500):
         current_positions = new_positions
         current_energy    = new_energy
 
-        # Update best if this step improved the conformation
+        # Update best if this step produced a better conformation
         if current_energy < best_energy:
             best_energy    = current_energy
             best_positions = list(current_positions)

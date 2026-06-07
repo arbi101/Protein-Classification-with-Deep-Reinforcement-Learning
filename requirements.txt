@@ -1,0 +1,5 @@
+Django==6.0.2
+requests>=2.31
+numpy>=1.26
+torch>=2.2
+matplotlib>=3.8

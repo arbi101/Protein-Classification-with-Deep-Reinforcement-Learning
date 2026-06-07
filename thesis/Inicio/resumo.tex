@@ -1,0 +1,14 @@
+% Resumo
+%--------------------------------------
+\vspace*{45pt}
+\begin{flushleft}
+	{\Large \textbf{\scshape{Resumo}}}
+\end{flushleft}
+\vspace*{10pt}
+
+A relação entre a sequência de aminoácidos de uma proteína e a sua estrutura tridimensional e função biológica é um foco central da biologia computacional moderna. Este projeto apresenta o desenvolvimento de uma plataforma web abrangente, construída com a framework Django, concebida para prever tanto a estrutura como as características funcionais das proteínas diretamente a partir de sequências FASTA. Para a anotação funcional, a plataforma integra a API DeepGO para prever os termos da Gene Ontology (GO), oferecendo um mapeamento rápido e acessível de sequência para função. Para abordar o complexo problema do enovelamento de proteínas, o estudo utiliza o modelo de rede 2D Hidrofóbico-Polar (HP). Um conjunto de algoritmos clássicos de otimização heurística  incluindo Hill Climbing, Simulated Annealing e Replica Exchange Monte Carlo  foi implementado e avaliado para estabelecer bases de referência estruturais. Com base nestes métodos clássicos, foram introduzidas técnicas de Inteligência Artificial para mapear trajetórias de enovelamento. A progressão do Tabular Q-Learning para uma Deep Q-Network (DQN) personalizada, baseada em PyTorch, demonstra a capacidade das Redes Neurais Convolucionais (CNNs) para aprender dependências espaciais dentro da grelha da proteína, superando as limitações dimensionais dos métodos tabulares. A plataforma resultante unifica estas diversas metodologias computacionais numa única interface, demonstrando a eficácia do Deep Reinforcement Learning na resolução de problemas complexos de otimização biofísica.
+
+\vspace*{20pt}
+
+\noindent \textbf{Palavras-chave}:
+Enovelamento de Proteínas, Deep Reinforcement Learning, Django, Gene Ontology, Modelo HP.

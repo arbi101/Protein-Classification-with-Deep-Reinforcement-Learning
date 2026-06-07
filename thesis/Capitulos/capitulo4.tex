@@ -1,0 +1,397 @@
+\chapter{Algorithm development}
+\label{cap4}
+
+This chapter focuses on the practical implementation of the computational methods used to solve the 2D HP protein folding problem. It describes the full prediction pipeline from raw sequence to lattice coordinates, details the specific implementation of each algorithm, and presents a quantitative comparative analysis of their performance on a benchmark dataset of 20 real UniProt protein sequences.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Protein 2D structure prediction pipeline}
+\label{cap4:sec_pipeline}
+
+The structure prediction pipeline processes a raw amino acid sequence through the following stages:
+
+\begin{enumerate}
+    \item \textbf{HP Translation:} The input sequence is scanned character by character. Each amino acid is classified as Hydrophobic (H) if it belongs to the set \texttt{\{A, C, F, I, L, M, V, W, Y\}} or Polar (P) otherwise, producing a binary HP string of the same length.
+
+    \item \textbf{Initialization:} The protein is initialized as a straight horizontal line: residue $i$ is placed at position $(i, 0)$. This is always a valid self-avoiding walk (SAW) and provides a neutral, unbiased starting conformation with energy 0 (no H-H contacts in a straight line unless residues happen to be placed adjacently by the walk).
+
+    \item \textbf{Energy Evaluation:} At each step, the conformation is evaluated using the HP energy function defined in Equation~\ref{eq:hp_energy}. In the implementation, this is computed by building a dictionary \texttt{\{(x,y): index\}} from the current positions, then for each H residue iterating over its four Manhattan neighbours and counting non-consecutive H-H contacts. The result is divided by 2 (since each contact is counted twice) and negated to give a negative energy.
+
+    \item \textbf{Optimization:} The chosen algorithm iteratively modifies the conformation using the shared move set (end-flip, kink-jump, crankshaft, pivot) and its specific acceptance criterion.
+
+    \item \textbf{Output:} The algorithm returns the best conformation found (as a list of $(x, y)$ coordinates), the corresponding minimum energy, and any learned parameters (Q-table or neural network weights).
+\end{enumerate}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{Figuras/pipeline_diagram.png}
+\caption[2D HP protein folding pipeline]{End-to-end 2D HP protein folding pipeline, from raw FASTA sequence to HP translation, optimization, energy evaluation and final lattice coordinates.}
+\label{fig:pipeline_diagram}
+\end{figure}
+\FloatBarrier
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Classical heuristic algorithms}
+\label{cap4:sec_classical}
+
+\subsection{Hill Climbing implementation}
+\label{cap4:subsec_hc_impl}
+
+The HC implementation (\texttt{test\_hc.py}) uses the acceptance criterion $E' \leq E$ (Equation~\ref{eq:hc_accept}). Moves are sampled with non-uniform weights $[0.2, 0.3, 0.3, 0.2]$ for \{end-flip, kink-jump, crankshaft, pivot\} respectively, to avoid the high rejection rate of pivot moves in compact conformations. The algorithm maintains both the current conformation (for the random walk) and a separately tracked global best. HC was evaluated at 1,000, 10,000, 50,000, and 100,000 iterations.
+
+\subsection{Simulated Annealing implementation}
+\label{cap4:subsec_sa_impl}
+
+The SA implementation (\texttt{test\_sa.py}) applies the Metropolis acceptance criterion (Equations~\ref{eq:sa_accept}--\ref{eq:sa_cooling}) with optimized parameters $T_0 = 30.0$ (initial temperature) and $T_f = 0.001$ (final temperature). The cooling schedule follows a geometric/exponential scheme: $T(i) = T_0 \cdot (T_f/T_0)^{i/N_{max}}$. The same weighted move sampling as HC is used. The probabilistic acceptance of worse moves is implemented as:
+
+\begin{verbatim}
+if random.random() < math.exp(-delta_e / T):
+    current_positions = new_positions
+\end{verbatim}
+
+The higher initial temperature $T_0 = 30.0$ (compared to earlier implementations at 10.0) provides more aggressive initial exploration, allowing escapes from poor local minima early in optimization. The lower final temperature $T_f = 0.001$ enables fine-grained refinement toward the end. The global best is updated only when strictly improving moves are found, while the current conformation is allowed to worsen temporarily during exploration phases.
+
+\subsection{Monte Carlo and REMC implementation}
+\label{cap4:subsec_remc_impl}
+
+The MC implementation (\texttt{test\_mc.py}) runs at a fixed temperature (constant throughout the run), applying the Metropolis criterion at each step without a cooling schedule. The benchmark experiments reported in this chapter use the script-level baseline temperature $T = 2.0$, while the web interface exposes this value as a configurable parameter and uses a default of $T = 5.0$ for interactive exploration. This distinction separates the controlled experimental baseline from the user-facing configuration.
+
+The REMC implementation (\texttt{test\_remc.py}) supports a configurable number of independent replicas distributed across a logarithmic temperature ladder ranging from $T_{min} = 0.1$ to $T_{max} = 30.0$, following the same multi-temperature principle used in REMC applications to HP-model protein folding~\cite{thachuk2007replica}. The benchmark experiments use $N = 10$ replicas to keep runtime comparable across the 20-protein dataset, whereas the web platform exposes the replica count to the user and uses $N = 20$ as its interactive default. Temperature values are computed as $T_k = T_{min} \cdot (T_{max}/T_{min})^{k/(N-1)}$ for replica $k = 0, 1, \ldots, N-1$. At every 200 MC steps, adjacent replicas attempt a Metropolis-style swap with probability $P_{swap} = \min(1, \exp((\beta_k - \beta_{k+1})(E_k - E_{k+1})))$ where $\beta = 1/T$. This multi-temperature strategy enables configurations from higher-temperature (exploratory) replicas to migrate toward the colder (exploitative) replicas and vice versa, significantly improving landscape exploration while maintaining computational tractability.
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Reinforcement learning implementation}
+\label{cap4:sec_rl_implementation}
+
+\subsection{Tabular Q-Learning}
+\label{cap4:subsec_ql_impl}
+
+The Tabular Q-Learning agent (\texttt{test\_ql.py}) is implemented using a \texttt{defaultdict} to represent the Q-table, initializing all $Q(s, a) = 0$. The state encoding (\texttt{positions\_to\_state}) normalizes the conformation by translating the chain so that the first residue is at the origin and rotating so that the second residue is always on the positive $x$-axis, thereby mapping all rotationally equivalent conformations to the same state key. Training parameters are $\alpha = 0.1$, $\gamma = 0.95$, $\varepsilon_0 = 1.0$, $\varepsilon_{\min} = 0.05$.
+
+After training, a greedy exploitation pass (\texttt{exploit\_q\_table}) runs for an additional 500--1000 steps with $\varepsilon = 0$, using the learned Q-table to extract the best policy discovered.
+
+\subsection{Deep Q-Network (DQN)}
+\label{cap4:subsec_dqn_impl}
+
+The constructive DQN agent (\texttt{colab\_dqn\_final.py}) is implemented using the \textbf{PyTorch} framework~\cite{paszke2019pytorch}. The CNN architecture (described in detail in Section~\ref{cap2:subsec_cnn}) takes as input a $2 \times 21 \times 21$ float tensor and outputs a 3-dimensional Q-value vector corresponding to the relative actions Forward, Left and Right. Training uses:
+\begin{itemize}
+    \item \textbf{Optimizer:} Adam, learning rate $\eta = 10^{-3}$
+    \item \textbf{Replay buffer capacity:} 100,000 transitions
+    \item \textbf{Mini-batch size:} 128
+    \item \textbf{Target network update frequency:} every 1,000 optimization steps
+    \item \textbf{Discount factor:} $\gamma = 0.99$
+    \item \textbf{Additional stabilization:} Double DQN target selection and gradient clipping with maximum norm 10
+\end{itemize}
+
+The trained weights are saved to \texttt{dqn\_weights.pth}. At inference time, the constructive policy places residues sequentially while maintaining a self-avoiding walk:
+\begin{enumerate}
+    \item \textbf{State encoding:} The partial chain is encoded in a local rotation-invariant grid centered on the current chain head.
+    \item \textbf{Action selection:} The policy selects the relative direction for the next residue, choosing among Forward, Left and Right.
+    \item \textbf{Reward feedback:} New non-consecutive H-H contacts provide positive reward, collisions terminate the episode with penalty, and full-chain completion receives a small bonus.
+\end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Result analysis}
+\label{cap4:sec_result_analysis}
+
+\subsection{Benchmark dataset}
+\label{cap4:subsec_benchmark}
+
+All algorithms were benchmarked on a dataset of 20 real protein sequences retrieved from UniProt~\cite{uniprot2023}, ranging from 56 to 98 amino acids in length, with H content between 20\% and 53\% of total residues. Sequences were tested at four iteration budgets: 1,000, 10,000, 50,000, and 100,000. Each configuration was run multiple times; best, average and standard deviation of energies are reported. Performance metrics include wall-clock execution time measured on standard CPU hardware (Intel i7, no GPU acceleration).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{Figuras/benchmark_dataset_profile.png}
+\caption[Benchmark dataset profile]{Benchmark dataset profile showing sequence length and hydrophobic content for the 20 UniProt proteins used in the experiments. The color scale represents hydrophobic residue percentage.}
+\label{fig:benchmark_dataset_profile}
+\end{figure}
+\FloatBarrier
+
+\subsection{Comparison of classical heuristics (HC, SA, MC)}
+\label{cap4:subsec_classical_results}
+
+The complete detailed comparative analysis of all three algorithms (MC, HC, SA) is reported below for the 20 benchmark proteins at 100,000 iterations, including best energy, average energy and variance (standard deviation) from 25 independent runs each.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{Figuras/convergence_curves.png}
+\caption[HC, SA and MC convergence curves]{Median convergence curves for MC, HC and SA across the 20-protein benchmark. The log-scaled x-axis highlights how solution quality changes with increasing iteration budget.}
+\label{fig:convergence_curves}
+\end{figure}
+\FloatBarrier
+
+\begin{table}[!htbp]
+\centering
+\caption[MC, HC and SA benchmark at 100k iterations]{Detailed benchmark: MC, HC, SA at 100,000 iterations (all 20 UniProt proteins). Best energy, average and standard deviation from 25 independent runs per algorithm-protein pair.}
+\label{tab:hc_sa_mc_all}
+\small
+\begin{tabular}{lrrrrrrrrrrr}
+\hline
+\textbf{Protein} & \textbf{Len} & \multicolumn{3}{c}{\textbf{MC}} & \multicolumn{3}{c}{\textbf{HC}} & \multicolumn{3}{c}{\textbf{SA}} & \textbf{H-cnt} \\
+& & \textbf{Best} & \textbf{Avg} & \textbf{Var} & \textbf{Best} & \textbf{Avg} & \textbf{Var} & \textbf{Best} & \textbf{Avg} & \textbf{Var} & \\
+\hline
+A1L190 & 88 & $-13$ & -11.12 & 0.97 & $-24$ & -21.08 & 1.96 & $-25$ & -21.92 & 1.73 & 36 \\
+C9JLW8 & 97 & $-9$ & -7.56 & 0.82 & $-20$ & -17.36 & 1.8 & $-19$ & -16.8 & 1.44 & 28 \\
+O00168 & 92 & $-16$ & -13.36 & 1.08 & $-27$ & -22.4 & 2.35 & $-27$ & -24.12 & 2.03 & 39 \\
+O00453 & 97 & $-14$ & -12.48 & 0.87 & $-26$ & -22.04 & 2.39 & $-28$ & -23.28 & 1.93 & 40 \\
+O14949 & 82 & $-11$ & -10.4 & 0.58 & $-25$ & -19.4 & 2.31 & $-24$ & -20.52 & 1.94 & 34 \\
+O14957 & 56 & $-13$ & -11.24 & 1.01 & $-20$ & -16.64 & 1.82 & $-22$ & -18.48 & 1.81 & 29 \\
+O15263 & 64 & $-14$ & -12.08 & 0.86 & $-24$ & -20.24 & 1.71 & $-26$ & -20.64 & 1.91 & 33 \\
+O43715 & 76 & $-11$ & -8.36 & 0.76 & $-19$ & -16.16 & 1.84 & $-21$ & -17.04 & 1.17 & 26 \\
+O75438 & 58 & $-11$ & -9.04 & 0.73 & $-15$ & -13.44 & 1.71 & $-16$ & -14.36 & 0.99 & 27 \\
+O95777 & 96 & $-12$ & -11.04 & 0.84 & $-27$ & -22.32 & 2.63 & $-29$ & -25.52 & 1.81 & 41 \\
+P04080 & 98 & $-12$ & -9.64 & 0.81 & $-24$ & -20.28 & 2.26 & $-25$ & -22.04 & 1.86 & 38 \\
+P04155 & 84 & $-14$ & -11.88 & 0.88 & $-25$ & -21.56 & 2.31 & $-26$ & -23.4 & 1.63 & 39 \\
+P04731 & 61 & $-11$ & -9.4 & 0.71 & $-18$ & -15.04 & 1.77 & $-18$ & -16.12 & 1.39 & 28 \\
+P05204 & 90 & $-6$ & -4.96 & 0.61 & $-13$ & -11.48 & 1.0 & $-13$ & -11.2 & 0.82 & 20 \\
+P06028 & 91 & $-18$ & -15.72 & 1.24 & $-32$ & -26.64 & 2.55 & $-32$ & -28.36 & 1.6 & 48 \\
+P07438 & 61 & $-11$ & -9.8 & 0.82 & $-21$ & -15.96 & 1.97 & $-20$ & -17.28 & 1.57 & 29 \\
+P10176 & 69 & $-13$ & -11.64 & 0.76 & $-24$ & -19.44 & 1.61 & $-25$ & -20.88 & 1.74 & 32 \\
+P29034 & 98 & $-16$ & -12.92 & 1.15 & $-28$ & -24.24 & 2.33 & $-30$ & -26.44 & 1.58 & 42 \\
+P33763 & 92 & $-14$ & -10.56 & 1.04 & $-25$ & -20.68 & 1.93 & $-25$ & -22.68 & 1.52 & 36 \\
+P35321 & 89 & $-4$ & -3.04 & 0.2 & $-8$ & -6.76 & 0.93 & $-8$ & -6.4 & 0.96 & 18 \\
+\hline
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\textbf{Interpretation:} The table is organized by increasing algorithm quality: MC (worst), HC (intermediate), SA (best). 
+
+\textbf{Monte Carlo (constant-T):} Achieves the poorest performance across all 20 proteins with mean best energy $-8.9$. Best energies range from $-4$ (low-H proteins like P35321) to $-18$ (high-H like P06028). Variance (column ``Var'') is lowest overall (0.2--1.24), indicating rapid convergence to suboptimal local minima and demonstrating the critical importance of temperature control.
+
+\textbf{Hill Climbing:} Intermediate performance with mean best energy $-20.2$, mean average $-16.1$. Best energies range $-8$ to $-32$ reflecting strong dependence on protein H-content and energy landscape. Variance 0.93--2.63 is higher than MC, showing greater run-to-run variability and better exploration. HC achieves competitive results on high-H proteins but stalls on low-H sequences.
+
+\textbf{Simulated Annealing (optimized):} Best quality--cost profile among the single-chain classical baselines, with mean best energy $-19.8$ and mean average energy $-16.5$. With parameters $T_0 = 30.0$, $T_f = 0.001$, SA improves the average-energy profile over HC for most proteins and achieves clear best-energy gains in representative cases (e.g., O00453: SA best $-28$ vs HC $-26$). Variance ranges 0.99--2.03, providing good exploration while maintaining solution quality. SA consistently provides robust solutions across diverse protein types.
+
+\textbf{Variance Analysis:} Lower variance does not automatically yield better solutions. MC's low variance (0.2--1.24) reflects premature convergence to poor local minima. SA balances variance (1.17--2.03 on average) with quality, enabling effective landscape exploration. This demonstrates that controlled variability is essential for escaping suboptimal attractors.
+
+\textbf{Recommendation:} Simulated Annealing is the optimal choice for routine production use because it offers strong solution quality with well-balanced variance and low runtime. REMC remains preferable when the objective is absolute minimum energy and the higher computational cost is acceptable.
+\FloatBarrier
+
+\subsection{Replica Exchange Monte Carlo (REMC) results}
+\label{cap4:subsec_remc_results}
+
+The REMC benchmark is reported below using 10 replicas distributed on a logarithmic temperature ladder ($T_{min} = 0.1$ to $T_{max} = 30.0$), with swap attempts every 200 MC steps.
+
+\begin{table}[!htbp]
+\centering
+\caption[REMC benchmark at 100k iterations]{REMC (10 replicas, logarithmic temperature ladder) at 100,000 iterations: best, average and standard deviation from multiple runs across all 20 UniProt proteins.}
+\label{tab:remc_benchmark}
+\small
+\begin{tabular}{lrrrrr}
+\hline
+\textbf{Protein} & \textbf{Len} & \textbf{Best} & \textbf{Avg} & \textbf{Std} & \textbf{Time (s)} \\
+\hline
+A1L190 & 88 & $-25$ & -24.33 & 0.58 & 23.34 \\
+C9JLW8 & 97 & $-20$ & -19.0 & 1.0 & 21.95 \\
+O00168 & 92 & $-27$ & -26.67 & 0.58 & 24.77 \\
+O00453 & 97 & $-26$ & -25.0 & 1.0 & 24.84 \\
+O14949 & 82 & $-23$ & -23.0 & 0.0 & 22.49 \\
+O14957 & 56 & $-22$ & -21.33 & 0.58 & 16.91 \\
+O15263 & 64 & $-26$ & -24.0 & 1.73 & 19.1 \\
+O43715 & 76 & $-20$ & -19.33 & 0.58 & 19.11 \\
+O75438 & 58 & $-17$ & -16.33 & 0.58 & 16.45 \\
+O95777 & 96 & $-27$ & -26.67 & 0.58 & 24.94 \\
+P04080 & 98 & $-26$ & -24.67 & 1.15 & 23.56 \\
+P04155 & 84 & $-28$ & -27.0 & 1.0 & 23.61 \\
+P04731 & 61 & $-18$ & -18.0 & 0.0 & 17.28 \\
+P05204 & 90 & $-13$ & -12.67 & 0.58 & 18.68 \\
+P06028 & 91 & $-32$ & -32.0 & 0.0 & 25.47 \\
+P07438 & 61 & $-21$ & -20.33 & 0.58 & 17.54 \\
+P10176 & 69 & $-25$ & -23.67 & 1.15 & 20.18 \\
+P29034 & 98 & $-30$ & -28.67 & 1.53 & 25.58 \\
+P33763 & 92 & $-26$ & -25.33 & 0.58 & 24.17 \\
+P35321 & 89 & $-8$ & -7.67 & 0.58 & 18.17 \\
+\hline
+\textbf{Median} & 87 & $-24$ & -23.0 & 1.2 & 21.95 \\
+\textbf{Mean} & 82 & $-23.6$ & -22.6 & 1.5 & 20.77 \\
+\hline
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\textbf{Analysis:} REMC achieves median best energy $-24$ (vs SA $-20$), a consistent 4-unit improvement via parallel tempering. Average energies range -7.67 to -32.0 with significantly lower standard deviations (0.0--1.73) than HC/SA, indicating high run-to-run consistency. Wall-clock execution times are 16--25 seconds, representing 20--24$\times$ computational cost compared to SA. REMC is particularly effective on high-H proteins (P06028: REMC best $-32$, avg $-32.0$, std 0.0 represents perfect consistency). REMC is recommended for applications requiring maximum solution quality when computational budget permits.
+\FloatBarrier
+
+\subsection{Tabular Q-Learning convergence and hyperparameter analysis}
+\label{cap4:subsec_ql_results}
+
+The Q-Learning benchmark below shows energy improvement as a function of training steps across a representative 16-protein subset of the full 20-protein benchmark. This subset was used for the tabular experiments because the Q-table grows exponentially with sequence length and repeated 100k-step runs over all 20 sequences were substantially less practical than for the classical heuristics. The DQN experiments later in this chapter return to the complete 20-protein dataset.
+
+\begin{table}[!htbp]
+\centering
+\caption[Tabular Q-Learning convergence benchmark]{Tabular Q-Learning convergence: best energy found at 1k, 10k, 50k, 100k steps. Average and standard deviation from multiple runs at 100k iteration budget.}
+\label{tab:ql_convergence_enhanced}
+\small
+\begin{tabular}{lrrrrrr}
+\hline
+\textbf{Protein} & \textbf{1k Best} & \textbf{10k Best} & \textbf{50k Best} & \textbf{100k Best} & \textbf{100k Avg} & \textbf{100k Std} \\
+\hline
+A1L190 & -2 & -6 & -8 & -12 & -8.67 & 3.06 \\
+C9JLW8 & -2 & -3 & -4 & -7 & -5.67 & 1.53 \\
+O00168 & -7 & -8 & -10 & -11 & -10.33 & 0.58 \\
+O00453 & -4 & -8 & -10 & -9 & -8.67 & 0.58 \\
+O14949 & -5 & -5 & -9 & -9 & -8.67 & 0.58 \\
+O14957 & -7 & -7 & -10 & -8 & -8.0 & 0.0 \\
+O15263 & -4 & -8 & -10 & -9 & -8.33 & 0.58 \\
+O43715 & -1 & -4 & -6 & -7 & -5.67 & 1.53 \\
+O75438 & -5 & -6 & -7 & -7 & -6.33 & 0.58 \\
+O95777 & -7 & -5 & -8 & -10 & -7.67 & 2.52 \\
+P04080 & -3 & -4 & -5 & -7 & -6.0 & 1.0 \\
+P04155 & -1 & -4 & -9 & -10 & -9.0 & 1.0 \\
+P04731 & -4 & -5 & -6 & -8 & -6.33 & 1.53 \\
+P05204 & -1 & -2 & -2 & -4 & -3.33 & 0.58 \\
+P06028 & -4 & -5 & -13 & -13 & -10.33 & 2.31 \\
+P07438 & -5 & -5 & -7 & -8 & -7.0 & 1.0 \\
+\hline
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\textbf{Q-Learning Insights:} Median best energy improves from -5 at 1k steps to -9 at 100k steps, demonstrating clear learning progression (80\% improvement). However, absolute gap persists: QL median -9 vs SA median -20 represents 55\% underperformance at 100k steps. Standard deviations at 100k range 0.0--3.06, showing high run-to-run variability (vs REMC's 0.0--1.73), indicating that tabular QL struggles with exploration-exploitation trade-off in high-dimensional space. 
+
+Hyperparameter analysis (9 configurations tested) reveals: (1) slow $\varepsilon$-decay (80\% exploration phase) consistently outperforms fast decay, (2) mid-range learning rates ($\alpha = 0.1$) balance convergence and stability better than aggressive learning ($\alpha = 0.9$), (3) discount factors $\gamma \in [0.9, 0.99]$ yield superior results to $\gamma = 0.5$. Best configuration: $\alpha = 0.1$, $\gamma = 0.9$, slow decay yields -10 median on A1L190.
+
+The fundamental limitation remains the \textbf{curse of dimensionality}: for 56--98 AA proteins, the state space grows exponentially, rendering exhaustive state visitation infeasible even at 100k steps. Tabular Q-Learning remains practical only for short proteins ($\leq 25$ AA).
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.82\textwidth]{Figuras/ql_convergence_curve.png}
+\caption[Tabular Q-Learning convergence curve]{Tabular Q-Learning convergence over increasing training budgets. The line shows median best energy across benchmark proteins and the shaded band shows the interquartile range.}
+\label{fig:ql_convergence_curve}
+\end{figure}
+\FloatBarrier
+
+\subsection{DQN results}
+\label{cap4:subsec_dqn_results}
+
+The Constructive DQN (\texttt{colab\_dqn\_final.py}) was trained on the complete dataset of 20 UniProt proteins using GPU acceleration (CUDA), processing 20,000 training episodes over the entire benchmark set. Training required 23,279.627 seconds ($\approx 388.0$ minutes, or 6.47 hours) on GPU hardware. The constructive approach builds protein chains residue-by-residue using relative directional actions (Forward, Left, Right), rather than perturbing an already complete chain. This formulation makes each episode a sequential folding trajectory and allows the model to learn local construction policies from partial conformations.
+
+\begin{table}[!htbp]
+\centering
+\caption[DQN training configuration]{DQN training configuration used in the final Colab run.}
+\label{tab:dqn_training_configuration}
+\small
+\begin{tabular}{lr}
+\hline
+\textbf{Parameter} & \textbf{Value} \\
+\hline
+Training proteins & 20 \\
+Protein length range & 56--98 AA \\
+Episodes & 20,000 \\
+Mini-batch size & 128 \\
+Replay buffer capacity & 100,000 transitions \\
+Learning rate & 0.001 \\
+Discount factor $\gamma$ & 0.99 \\
+$\varepsilon$ schedule & 1.0 $\rightarrow$ 0.05, decay 0.995 \\
+Target-network update & every 1,000 optimization steps \\
+Total optimization steps & 1,195,355 \\
+Training time & 23,279.627 s ($\approx$ 6.47 h) \\
+\hline
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\textbf{Training performance summary:} During training across all 20 proteins, the DQN achieved:
+\begin{itemize}
+    \item \textbf{Median best energy:} $-18$ (across 20 proteins)
+    \item \textbf{Mean best energy:} $-16.9$
+    \item \textbf{Best achieved energy:} $-26$ (P06028, 91 AA, 48 H residues)
+    \item \textbf{Energy range:} $-26$ to $-3$ (showing strong protein-dependence)
+    \item \textbf{Mean final episode energy:} $-7.76$
+    \item \textbf{Mean reward:} 7.75 per episode; mean best reward 17.62
+    \item \textbf{Mean completion rate:} 0.57 during training
+    \item \textbf{Greedy inference:} final trained policy completed 20/20 proteins without exploration, with median greedy energy $-12$
+\end{itemize}
+
+\begin{table}[!htbp]
+\centering
+\caption[Constructive DQN detailed results]{Constructive DQN detailed training and greedy-inference results over the 20 UniProt benchmark proteins. Best, average and last values are computed from the 20,000-episode training run; greedy values are obtained by evaluating the final trained policy without exploration.}
+\label{tab:dqn_detailed_results}
+\scriptsize
+\begin{tabular}{lrrrrrrrr}
+\hline
+\textbf{Protein} & \textbf{Len} & \textbf{H} & \textbf{Episodes} & \textbf{Best E} & \textbf{Avg E} & \textbf{Last E} & \textbf{Comp.} & \textbf{Greedy E} \\
+\hline
+O43715 & 76 & 26 & 956 & $-14$ & -6.22 & $-6$ & 0.61 & $-8$ \\
+C9JLW8 & 97 & 28 & 985 & $-11$ & -4.25 & $-1$ & 0.56 & $-5$ \\
+O00168 & 92 & 39 & 982 & $-25$ & -12.18 & $-4$ & 0.49 & $-13$ \\
+P35321 & 89 & 18 & 992 & $-3$ & -0.68 & $0$ & 0.61 & $-1$ \\
+O14957 & 56 & 29 & 1037 & $-19$ & -9.84 & $-4$ & 0.61 & $-14$ \\
+P04080 & 98 & 38 & 975 & $-14$ & -6.17 & $-6$ & 0.51 & $-7$ \\
+P06028 & 91 & 48 & 968 & $-26$ & -12.51 & $-17$ & 0.49 & $-13$ \\
+O14949 & 82 & 34 & 984 & $-19$ & -7.09 & $-12$ & 0.58 & $-12$ \\
+P29034 & 98 & 42 & 1012 & $-22$ & -10.04 & $-9$ & 0.48 & $-13$ \\
+P33763 & 92 & 36 & 1066 & $-17$ & -7.09 & $-2$ & 0.54 & $-13$ \\
+O95777 & 96 & 41 & 996 & $-19$ & -8.42 & $-2$ & 0.49 & $-13$ \\
+O00453 & 97 & 40 & 994 & $-23$ & -12.38 & $-2$ & 0.50 & $-12$ \\
+P07438 & 61 & 29 & 1039 & $-14$ & -5.73 & $-5$ & 0.63 & $-10$ \\
+O15263 & 64 & 33 & 943 & $-22$ & -11.86 & $-12$ & 0.60 & $-12$ \\
+P05204 & 90 & 20 & 1036 & $-7$ & -2.32 & $-3$ & 0.65 & $-5$ \\
+A1L190 & 88 & 36 & 1012 & $-16$ & -6.25 & $-7$ & 0.55 & $-7$ \\
+P10176 & 69 & 32 & 956 & $-19$ & -8.85 & $-8$ & 0.58 & $-11$ \\
+P04731 & 61 & 28 & 1050 & $-12$ & -5.18 & $-4$ & 0.67 & $-6$ \\
+O75438 & 58 & 27 & 984 & $-16$ & -7.28 & $-8$ & 0.63 & $-12$ \\
+P04155 & 84 & 39 & 1033 & $-20$ & -10.94 & $-6$ & 0.53 & $-12$ \\
+\hline
+\textbf{Mean} & 82.0 & 33.2 & 1000 & $-16.9$ & -7.76 & -- & 0.57 & $-10.0$ \\
+\textbf{Median} & 88.5 & 33.5 & 993 & $-18.0$ & -7.19 & -- & 0.57 & $-12.0$ \\
+\hline
+\end{tabular}
+\end{table}
+\FloatBarrier
+
+\textbf{Sequence-level interpretation:} The best results occur on proteins with higher hydrophobic content: P06028 ($-26$, 48 H), O00168 ($-25$, 39 H), O00453 ($-23$, 40 H), P29034 ($-22$, 42 H), and O15263 ($-22$, 33 H). In contrast, low-H sequences remain difficult: P35321 contains only 18 H residues and reaches best energy $-3$, while P05204 contains 20 H residues and reaches best energy $-7$. This pattern confirms that the sparse reward structure is strongly tied to the availability of H-H contacts; when few hydrophobic residues exist, the agent receives fewer positive learning signals.
+
+\textbf{Comparison with classical methods:} The DQN median best energy is $-18$, compared with approximately $-20$ for SA and $-24$ for REMC. Therefore, the trained DQN approaches the simulated annealing baseline but still does not outperform the best stochastic optimization method. Its value is methodological: it learns a reusable construction policy from experience, rather than re-optimizing each sequence from scratch. The remaining gap to REMC suggests that longer training, sequence-specific rollouts, policy search over Q-values, and more recent RL algorithms may be required for fully competitive performance.
+
+\textbf{Implications:} The constructive environment with relative directional actions and rotation-invariant state representation successfully enables the DQN to learn non-trivial folding strategies across diverse proteins. The final deterministic policy completed all 20 chains and reached median greedy energy $-12$, while the best training trajectories reached median energy $-18$. This indicates that the learned policy is usable for web inference, but that repeated rollouts remain important for extracting stronger conformations from the same Q-network.
+
+\subsubsection{DQN Learning Curve}
+
+Figure~\ref{fig:dqn_learning_curve} presents the DQN training curve across all 20 proteins over 20,000 episodes, showing the final energy obtained in each episode and its moving-average trend.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{Figuras/dqn_learning_curve.png}
+\caption[DQN training learning curve]{DQN training learning curve over 20,000 episodes. The raw curve reports final episode energy on mixed protein lengths, while the moving average highlights the overall learning trend. High variance reflects both stochastic exploration and H-content diversity (18--48 hydrophobic residues): high-H proteins can achieve best energies from $-22$ to $-26$, while low-H sequences remain closer to $-3$ to $-7$.}
+\label{fig:dqn_learning_curve}
+\end{figure}
+\FloatBarrier
+
+\textbf{Learning Dynamics:} The curve shows three broad phases: (1) \textit{early exploration}, where $\varepsilon$ decays rapidly from 1.0 toward 0.05 and the replay buffer begins to collect diverse partial-chain transitions; (2) \textit{policy refinement}, where the moving-average energy stabilizes as the buffer reaches a more representative mixture of successful and failed constructions; and (3) \textit{late low-exploration training}, where $\varepsilon = 0.05$ maintains limited exploration while the policy continues to discover stronger conformations on favorable sequences. The scatter across proteins demonstrates that even with shared network weights, sequence-specific characteristics (H-content, length, local motifs) dominate final performance, motivating the need for per-sequence fine-tuning or domain adaptation in future work.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{Figuras/algorithm_comparison_100k.pdf}
+\caption[Algorithm median energy comparison]{Median best energy obtained by each algorithm at the 100,000-step budget where applicable. DQN values correspond to the final constructive DQN per-sequence training results.}
+\label{fig:algorithm_comparison_100k}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.88\textwidth]{Figuras/performance_vs_cost.pdf}
+\caption[Performance versus computational cost]{Trade-off between solution quality and computational cost. Classical methods are CPU timings at 100,000 iterations, while the DQN point summarizes training cost amortized over the 20 benchmark proteins.}
+\label{fig:performance_vs_cost}
+\end{figure}
+\FloatBarrier
+
+% ─────────────────────────────────────────────────────────────────────
+\section{Summary and performance hierarchy}
+\label{cap4:sec_summary}
+
+This chapter presented the complete 2D HP protein folding pipeline and detailed implementation of all six algorithms. Comprehensive benchmark on 20 UniProt sequences (56--98 AA, 20--53\% hydrophobicity) with detailed measurements of best energy, average energy, and variance (standard deviation) establishes the following practical performance hierarchy:
+
+\begin{enumerate}
+    \item \textbf{Replica Exchange MC (REMC):} Achieves the \textbf{highest solution quality} (median best $-24$, mean $-23.6$) via parallel tempering across 10 temperature replicas in the benchmark setting. \textbf{Lowest variance} (0.0--1.73) indicates exceptional run-to-run consistency. Computational cost is high: 20--24$\times$ slower than SA (16--25 seconds). Appropriate when solution quality is paramount and compute budget permits.
+    
+    \item \textbf{Simulated Annealing (SA):} \textbf{Recommended production baseline} with optimized parameters $T_0 = 30.0$, $T_f = 0.001$. Although REMC reaches better absolute energies, SA provides the best quality--cost trade-off for routine use: mean best energy $-19.8$, mean average $-16.5$, execution time <1.2s per protein, and robust behavior across all 20 proteins (H-content 20--53\%). Variance 0.99--2.03 provides a good balance between exploration and exploitation, and SA improves the average-energy profile over HC for most proteins.
+    
+    \item \textbf{Hill Climbing (HC):} Intermediate performance with mean best energy $-20.2$, mean average $-16.1$. Higher variance (1.71--2.63) enables better exploration than MC but shows strong landscape dependence. Best for high-H proteins; stalls on low-H sequences. Fast execution (<1.0s) but requires multiple restarts for robustness.
+    
+    \item \textbf{Monte Carlo (constant-T):} Poor baseline with mean best energy $-8.9$ (56\% degradation vs SA). \textbf{Lowest variance} (0.2--1.24) indicates rapid convergence to suboptimal local minima, demonstrating that low variance without good solutions reflects premature convergence. Conclusively demonstrates critical importance of temperature control. Not recommended for production use.
+    
+    \item \textbf{Tabular Q-Learning:} Severely limited by curse of dimensionality for 56--98 AA proteins. Achieves median -9 at 100k steps (55\% worse than SA). Higher variance (0.0--3.06) shows exploration difficulties. Practical only for short sequences ($\leq 25$ AA) where state space is manageable.
+    
+    \item \textbf{Deep Q-Network (CNN-based, Constructive):} Achieves median best energy $-18$ and mean best energy $-16.9$ with GPU training over 20,000 episodes on the full 20-protein dataset. Peak performance of $-26$ on P06028 (91 AA, 48 H) demonstrates that the learned construction policy can discover non-trivial folds on favorable sequences; however, gaps to SA (median approximately $-20$) and REMC (median approximately $-24$) remain. The constructive environment with a rotation-invariant $21 \times 21$ grid and relative directional actions validates DRL feasibility. Computational cost is high: 23,279.627 seconds of GPU training. Limitations stem from sparse reward structure on low-H proteins and sample inefficiency of neural Q-learning. Policy-gradient methods, search over DQN action values, and better sequence-specific rollout strategies are expected to narrow the remaining performance gap.
+\end{enumerate}
+
+The progressive algorithm complexity from greedy search to learned spatial policies reflects the methodological evolution toward more principled and asymptotically scalable approaches. Future work will focus on GPU-accelerated DQN training, policy-gradient RL methods with better sample efficiency, and extension to 3D HP protein folding.

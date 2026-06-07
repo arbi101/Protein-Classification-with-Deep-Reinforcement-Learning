@@ -1,0 +1,80 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 900 520] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+6 0 obj
+<< /Length 2697 >>
+stream
+1 1 1 rg 0 0 900 520 re f
+BT /F2 20 Tf 257.60 480.00 Td (Performance versus Computational Cost) Tj ET
+BT /F1 10 Tf 327.80 458.00 Td (Mean time per protein versus median best energy) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 410.00 m 840.00 410.00 l S
+BT /F1 9 Tf 73.32 406.00 Td (0) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 355.83 m 840.00 355.83 l S
+BT /F1 9 Tf 68.64 351.83 Td (-5) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 301.67 m 840.00 301.67 l S
+BT /F1 9 Tf 63.96 297.67 Td (-10) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 247.50 m 840.00 247.50 l S
+BT /F1 9 Tf 63.96 243.50 Td (-15) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 193.33 m 840.00 193.33 l S
+BT /F1 9 Tf 63.96 189.33 Td (-20) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 139.17 m 840.00 139.17 l S
+BT /F1 9 Tf 63.96 135.17 Td (-25) Tj ET
+0.880 0.880 0.880 RG 0.60 w 90.00 85.00 m 840.00 85.00 l S
+BT /F1 9 Tf 63.96 81.00 Td (-30) Tj ET
+0.920 0.920 0.920 RG 0.50 w 90.00 85.00 m 90.00 410.00 l S
+BT /F1 9 Tf 80.64 67.00 Td (0.01) Tj ET
+0.920 0.920 0.920 RG 0.50 w 231.51 85.00 m 231.51 410.00 l S
+BT /F1 9 Tf 224.49 67.00 Td (0.1) Tj ET
+0.920 0.920 0.920 RG 0.50 w 373.02 85.00 m 373.02 410.00 l S
+BT /F1 9 Tf 370.68 67.00 Td (1) Tj ET
+0.920 0.920 0.920 RG 0.50 w 514.53 85.00 m 514.53 410.00 l S
+BT /F1 9 Tf 509.85 67.00 Td (10) Tj ET
+0.920 0.920 0.920 RG 0.50 w 656.04 85.00 m 656.04 410.00 l S
+BT /F1 9 Tf 649.02 67.00 Td (100) Tj ET
+0.920 0.920 0.920 RG 0.50 w 797.55 85.00 m 797.55 410.00 l S
+BT /F1 9 Tf 788.19 67.00 Td (1000) Tj ET
+0.000 0.000 0.000 RG 1.00 w 90.00 85.00 m 90.00 410.00 l S
+0.000 0.000 0.000 RG 1.00 w 90.00 85.00 m 840.00 85.00 l S
+0.550 0.820 0.780 rg 367.58 279.83 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 367.58 279.83 22.00 22.00 re S
+BT /F2 10 Tf 394.58 286.83 Td (MC) Tj ET
+0.700 0.870 0.410 rg 424.77 312.33 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 424.77 312.33 22.00 22.00 re S
+BT /F2 10 Tf 451.77 319.33 Td (Q-Learning) Tj ET
+0.740 0.500 0.740 rg 795.88 204.00 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 795.88 204.00 22.00 22.00 re S
+BT /F2 10 Tf 822.88 211.00 Td (DQN) Tj ET
+0.980 0.500 0.450 rg 352.53 193.17 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 352.53 193.17 22.00 22.00 re S
+BT /F2 10 Tf 379.53 200.17 Td (HC) Tj ET
+0.500 0.700 0.830 rg 360.77 171.50 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 360.77 171.50 22.00 22.00 re S
+BT /F2 10 Tf 387.77 178.50 Td (SA) Tj ET
+0.990 0.700 0.380 rg 550.31 149.83 22.00 22.00 re f 0.150 0.150 0.150 RG 1.00 w 550.31 149.83 22.00 22.00 re S
+BT /F2 10 Tf 577.31 156.83 Td (REMC) Tj ET
+BT /F2 11 Tf 309.86 40.00 Td (Computation Time per Protein \(seconds, log scale\)) Tj ET
+BT /F2 11 Tf -80.96 250.00 Td (Median Best Energy \(lower is better\)) Tj ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000257 00000 n 
+0000000327 00000 n 
+0000000402 00000 n 
+trailer << /Size 7 /Root 1 0 R >>
+startxref
+3151
+%%EOF

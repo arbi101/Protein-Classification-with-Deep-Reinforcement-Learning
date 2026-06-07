@@ -1,0 +1,61 @@
+
+% Lista de símbolos
+%--------------------------------------
+\vspace*{45pt}
+\begin{flushleft}
+	{\Large \textbf{\scshape{Lista de símbolos}}}
+\end{flushleft}
+\vspace*{20pt}
+
+\begin{description}
+    \item[$a$] Action selected by the reinforcement learning agent
+    \item[$a'$] Candidate or next action
+    \item[$\mathcal{A}$] Action space
+    \item[$\beta_k$] Inverse temperature of replica $k$, defined as $\beta_k = 1/T_k$
+    \item[$\mathcal{C}$] Protein conformation represented as lattice coordinates
+    \item[$\mathcal{C}'$] Candidate conformation after applying a move
+    \item[$\mathcal{D}$] Replay buffer used during DQN training
+    \item[$d(p_i,p_j)$] Manhattan distance between residues $i$ and $j$
+    \item[$\Delta E$] Energy variation, $E(\mathcal{C}') - E(\mathcal{C})$
+    \item[$E(\mathcal{C})$] HP energy of conformation $\mathcal{C}$
+    \item[$E_{\text{best}}$] Best energy found during a search or training run
+    \item[$\varepsilon$] Exploration probability in an $\varepsilon$-greedy policy
+    \item[$\varepsilon_0$] Initial exploration probability
+    \item[$\varepsilon_{\min}$] Minimum exploration probability
+    \item[$g_{\text{channel}}(x,y)$] Value of the DQN input grid at position $(x,y)$ for one residue channel
+    \item[$\gamma$] Discount factor for future rewards
+    \item[$i,j$] Residue indices in the protein sequence
+    \item[$\mathbb{1}(\cdot)$] Indicator function, equal to 1 when the condition is true and 0 otherwise
+    \item[$k$] Pivot index or replica index, depending on context
+    \item[$\mathcal{L}(\theta)$] DQN loss function
+    \item[$m$] Move sampled from the classical move set
+    \item[$N$] Number of replicas in Replica Exchange Monte Carlo
+    \item[$n$] Protein sequence length
+    \item[$p_i$] Lattice position of residue $i$
+    \item[$P(\text{accept})$] Probability of accepting a candidate move
+    \item[$P(\text{swap})$] Probability of swapping two neighbouring REMC replicas
+    \item[$\mathcal{P}$] State transition probability function in the MDP formulation
+    \item[$Q(s,a)$] Q-value for taking action $a$ in state $s$
+    \item[$Q(s,a;\theta)$] Deep Q-Network approximation of the Q-value using parameters $\theta$
+    \item[$Q(s,a;\theta^-)$] Target-network Q-value using parameters $\theta^-$
+    \item[$R(s,a)$] Reward obtained after taking action $a$ in state $s$
+    \item[$r$] Immediate reward in a transition
+    \item[$s$] Current state
+    \item[$s'$] Next state after applying an action
+    \item[$\mathcal{S}$] State space
+    \item[$t$] Iteration, step, or episode index
+    \item[$T$] Temperature parameter used by Monte Carlo and Simulated Annealing
+    \item[$T_0$] Initial temperature
+    \item[$T_f$] Final temperature
+    \item[$T_i$] Temperature at iteration $i$
+    \item[$T_k$] Temperature assigned to replica $k$
+    \item[$T_{\max}$] Maximum number of iterations or search steps
+    \item[$T_{\text{decay}}$] Number of steps used for exploration decay
+    \item[$\theta$] Trainable parameters of the policy network
+    \item[$\theta^-$] Parameters of the target network
+    \item[$x_i,y_i$] Two-dimensional lattice coordinates of residue $i$
+    \item[$y$] Temporal-difference target used in DQN updates
+    \item[$\mathbb{Z}^2$] Two-dimensional integer lattice
+    \item[$\alpha$] Learning rate in Tabular Q-Learning
+    \item[$\eta$] Neural-network learning rate used by the Adam optimizer
+\end{description}

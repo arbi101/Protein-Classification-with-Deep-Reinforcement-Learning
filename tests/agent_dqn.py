@@ -486,7 +486,7 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
     current_positions = list(best_positions)  # start from Phase 1 best
 
     for _ in range(refine_steps):
-        improved = False
+        found_better = False
         # Try every possible move type and pick the one that improves energy most
         for action in MOVE_TYPES:
             new_positions = apply_move(current_positions, action, hp_string)
@@ -498,10 +498,10 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
                 best_energy = new_energy
                 best_positions = list(new_positions)
                 current_positions = new_positions
-                improved = True
-                break  # restart from the improved conformation immediately
+                found_better = True
+                break  # restart from the better conformation immediately
 
-        if not improved:
+        if not found_better:
             # No improving move found → stuck in local minimum.
             # Apply a random move to escape (accepts any valid move)
             import random

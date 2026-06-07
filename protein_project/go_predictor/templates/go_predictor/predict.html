@@ -45,6 +45,7 @@
                         id="{{ form.fasta_sequence.id_for_label }}"
                         class="w-full font-mono text-sm min-h-[200px] resize-y border border-slate-300 rounded-lg p-3 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                         placeholder=">ProteinName&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"
+                        required
                     >{{ form.fasta_sequence.value|default:">TestProtein1&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
                     {% if form.fasta_sequence.errors %}
                         <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
@@ -166,11 +167,11 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">T Min:</label>
-                                            <input type="number" name="remc_tmin" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmin|default:'0.1' }}" min="0.01" step="0.1">
+                                            <input type="number" name="remc_tmin" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmin|default:'0.1' }}" min="0.01" step="0.01">
                                         </div>
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">T Max:</label>
-                                            <input type="number" name="remc_tmax" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmax|default:'30.0' }}" min="5" step="5">
+                                            <input type="number" name="remc_tmax" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.remc_tmax|default:'30.0' }}" min="5" step="1">
                                         </div>
                                     </div>
                                 </div>
@@ -185,7 +186,7 @@
                                     <div class="peer-checked:bg-emerald-600 bg-emerald-200 rounded-full p-2">
                                         <i data-lucide="brain" class="size-4 peer-checked:text-white text-emerald-700"></i>
                                     </div>
-                                    <h3 class="font-semibold text-emerald-800">Advanced Deep Q-Learning (RL)</h3>
+                                    <h3 class="font-semibold text-emerald-800">Deep Q-Learning (RL)</h3>
                                 </div>
                                 <div class="ml-9 space-y-2 algo-params hidden" data-algo="ql">
                                     <div class="grid grid-cols-2 gap-2">
@@ -606,7 +607,7 @@
                                 <span class="font-semibold">Predict GO:</span> Enter a protein sequence in FASTA format and click on "Predict GO" to obtain functional predictions of the protein based on Gene Ontology terms.
                             </li>
                             <li>
-                                <span class="font-semibold">Generate 2D Structure:</span> Click on "Generate 2D Structure" to visualize a 2D representation of the protein using optimization algorithms (Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange MC, or Advanced Deep Q-Learning). Choose your algorithm and configure parameters for optimal results.
+                                <span class="font-semibold">Generate 2D Structure:</span> Click on "Generate 2D Structure" to visualize a 2D representation of the protein using optimization algorithms (Hill Climbing, Simulated Annealing, Monte Carlo, Replica Exchange MC, or Deep Q-Learning). Choose your algorithm and configure parameters for optimal results.
                             </li>
                             <li>
                                 <span class="font-semibold">Generate 3D Structure (AlphaFold):</span> Click on "Generate 3D Structure (AlphaFold)" to predict the complete 3D structure of your protein. The tool first searches the AlphaFold database, and if unavailable, uses ESMFold for real-time prediction.
@@ -735,6 +736,62 @@ document.addEventListener('DOMContentLoaded', function() {
     const algoSection = document.getElementById('algorithm-section');
     const algoSeparator = document.getElementById('algorithm-separator');
     const cancelBtn = document.getElementById('cancel-algo-btn');
+    const fastaInput = document.getElementById('{{ form.fasta_sequence.id_for_label }}');
+
+    function validateFastaInput() {
+        if (!fastaInput) return true;
+        const value = fastaInput.value.trim();
+        fastaInput.setCustomValidity('');
+
+        if (!value) {
+            fastaInput.setCustomValidity('Enter at least one FASTA sequence.');
+            return false;
+        }
+
+        let sequenceCount = 0;
+        let hasCurrentSequence = false;
+        const lines = value.split(/\r?\n/);
+
+        for (const rawLine of lines) {
+            const line = rawLine.trim();
+            if (!line) continue;
+            if (line.startsWith('>')) {
+                if (hasCurrentSequence) {
+                    sequenceCount += 1;
+                    hasCurrentSequence = false;
+                }
+                continue;
+            }
+            if (!/^[A-Za-z]+$/.test(line)) {
+                fastaInput.setCustomValidity('Use only amino-acid letters in sequence lines.');
+                return false;
+            }
+            hasCurrentSequence = true;
+        }
+
+        if (hasCurrentSequence) sequenceCount += 1;
+        if (sequenceCount === 0) {
+            fastaInput.setCustomValidity('Enter a FASTA header followed by an amino-acid sequence.');
+            return false;
+        }
+        if (sequenceCount > 10) {
+            fastaInput.setCustomValidity('Enter no more than 10 FASTA sequences.');
+            return false;
+        }
+
+        return true;
+    }
+
+    if (fastaInput) {
+        fastaInput.addEventListener('input', validateFastaInput);
+        fastaInput.addEventListener('invalid', validateFastaInput);
+        fastaInput.form?.addEventListener('submit', (event) => {
+            if (!validateFastaInput()) {
+                event.preventDefault();
+                fastaInput.reportValidity();
+            }
+        });
+    }
 
     // Show algorithm section when "Generate 2D Structure" is clicked
     generateBtn.addEventListener('click', () => {
@@ -744,6 +801,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!document.querySelector('input[name="algorithm"]:checked')) {
             document.querySelector('input[name="algorithm"][value="sa"]').checked = true;
         }
+        updateParameterVisibility(getSelectedAlgorithm());
         // Scroll to algorithm section
         algoSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     });
@@ -759,6 +817,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const algoParams = document.querySelectorAll('.algo-params');
     const traceInput = document.querySelector('input[name="trace_interval"]');
     const traceHelp = document.getElementById('trace-interval-help');
+    const structureNumberInputs = document.querySelectorAll(
+        'input[name^="hc_"], input[name^="sa_"], input[name^="mc_"], input[name^="remc_"], input[name^="ql_"], input[name="trace_interval"]'
+    );
 
     function getSelectedAlgorithm() {
         return document.querySelector('input[name="algorithm"]:checked')?.value || 'sa';
@@ -778,6 +839,95 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    const numberValidationMessages = {
+        hc_iterations: {
+            min: 'Enter at least 1,000 Hill Climbing iterations.',
+            step: 'Use increments of 1,000 for Hill Climbing iterations.',
+            bad: 'Enter a valid number of Hill Climbing iterations.'
+        },
+        sa_iterations: {
+            min: 'Enter at least 1,000 Simulated Annealing iterations.',
+            step: 'Use increments of 1,000 for Simulated Annealing iterations.',
+            bad: 'Enter a valid number of Simulated Annealing iterations.'
+        },
+        sa_initial_t: {
+            min: 'Enter an initial temperature of at least 0.1.',
+            step: 'Use increments of 0.1 for the initial temperature.',
+            bad: 'Enter a valid initial temperature.'
+        },
+        sa_final_t: {
+            min: 'Enter a final temperature of at least 0.0001.',
+            step: 'Use increments of 0.0001 for the final temperature.',
+            bad: 'Enter a valid final temperature.'
+        },
+        mc_iterations: {
+            min: 'Enter at least 1,000 Monte Carlo iterations.',
+            step: 'Use increments of 1,000 for Monte Carlo iterations.',
+            bad: 'Enter a valid number of Monte Carlo iterations.'
+        },
+        mc_temperature: {
+            min: 'Enter a Monte Carlo temperature of at least 0.1.',
+            step: 'Use increments of 0.1 for the Monte Carlo temperature.',
+            bad: 'Enter a valid Monte Carlo temperature.'
+        },
+        remc_iterations: {
+            min: 'Enter at least 1,000 REMC iterations.',
+            step: 'Use increments of 1,000 for REMC iterations.',
+            bad: 'Enter a valid number of REMC iterations.'
+        },
+        remc_replicas: {
+            min: 'Enter at least 2 replicas.',
+            max: 'Enter no more than 30 replicas.',
+            step: 'Use whole numbers for the replica count.',
+            bad: 'Enter a valid number of replicas.'
+        },
+        remc_swap: {
+            min: 'Enter a swap interval of at least 50.',
+            step: 'Use increments of 50 for the swap interval.',
+            bad: 'Enter a valid swap interval.'
+        },
+        remc_tmin: {
+            min: 'Enter a minimum REMC temperature of at least 0.01.',
+            step: 'Use increments of 0.01 for the minimum REMC temperature.',
+            bad: 'Enter a valid minimum REMC temperature.'
+        },
+        remc_tmax: {
+            min: 'Enter a maximum REMC temperature of at least 5.',
+            step: 'Use increments of 1 for the maximum REMC temperature.',
+            bad: 'Enter a valid maximum REMC temperature.'
+        },
+        ql_steps: {
+            min: 'Enter at least 50 DQN rollouts.',
+            step: 'Use increments of 50 for DQN rollouts.',
+            bad: 'Enter a valid number of DQN rollouts.'
+        },
+        trace_interval: {
+            bad: 'Enter a valid step interval.'
+        }
+    };
+
+    function updateNumberValidationMessage(input) {
+        if (!input || input.disabled) return;
+        const messages = numberValidationMessages[input.name] || {};
+        input.setCustomValidity('');
+
+        if (input.name === 'trace_interval') {
+            updateTraceValidationMessage();
+            if (input.validationMessage) return;
+        }
+
+        const validity = input.validity;
+        if (validity.badInput) {
+            input.setCustomValidity(messages.bad || 'Enter a valid number.');
+        } else if (validity.rangeUnderflow) {
+            input.setCustomValidity(messages.min || `Enter a value of at least ${input.min}.`);
+        } else if (validity.rangeOverflow) {
+            input.setCustomValidity(messages.max || `Enter a value of at most ${input.max}.`);
+        } else if (validity.stepMismatch) {
+            input.setCustomValidity(messages.step || `Use increments of ${input.step}.`);
+        }
+    }
+
     function updateParameterVisibility(selectedAlgo) {
         algoParams.forEach(params => {
             const inputs = params.querySelectorAll('input[type="number"]');
@@ -786,12 +936,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Enable inputs for visible parameters
                 inputs.forEach(input => {
                     input.disabled = false;
+                    updateNumberValidationMessage(input);
                 });
             } else {
                 params.classList.add('hidden');
                 // Disable inputs for hidden parameters so they don't get validated
                 inputs.forEach(input => {
                     input.disabled = true;
+                    input.setCustomValidity('');
                 });
             }
         });
@@ -814,6 +966,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             updateTraceValidationMessage();
         }
+    }
+
+    function setStructureValidationMode(isStructureAction) {
+        if (isStructureAction) {
+            updateParameterVisibility(getSelectedAlgorithm());
+            return;
+        }
+
+        structureNumberInputs.forEach(input => {
+            input.disabled = true;
+            input.setCustomValidity('');
+        });
     }
 
     algoRadios.forEach(radio => {
@@ -891,11 +1055,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add event listeners to all parameter inputs to save on change
-    document.querySelectorAll('input[name^="hc_"], input[name^="sa_"], input[name^="mc_"], input[name^="remc_"], input[name^="ql_"], input[name="trace_interval"]').forEach(input => {
+    structureNumberInputs.forEach(input => {
         input.addEventListener('input', () => {
             input.dataset.userEdited = 'true';
-            if (input.name === 'trace_interval') updateTraceValidationMessage();
+            updateNumberValidationMessage(input);
         });
+        input.addEventListener('invalid', () => updateNumberValidationMessage(input));
         input.addEventListener('change', saveParametersToLocalStorage);
         input.addEventListener('input', saveParametersToLocalStorage);
     });
@@ -904,6 +1069,12 @@ document.addEventListener('DOMContentLoaded', function() {
         traceInput.addEventListener('invalid', updateTraceValidationMessage);
         traceInput.addEventListener('change', updateTraceValidationMessage);
     }
+
+    document.querySelectorAll('button[type="submit"][name="action"]').forEach(button => {
+        button.addEventListener('click', () => {
+            setStructureValidationMode(button.value === 'structure');
+        });
+    });
 
     // Add event listener to algorithm radios to save on change
     algoRadios.forEach(radio => {
