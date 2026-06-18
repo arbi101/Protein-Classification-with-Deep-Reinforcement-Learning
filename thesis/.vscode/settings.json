@@ -6,7 +6,8 @@
       "args": [
         "--synctex",
         "--keep-logs",
-        "--outdir=%OUTDIR%",
+        "--outdir",
+        "%OUTDIR%",
         "%DOC_EXT%"
       ]
     }

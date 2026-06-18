@@ -66,57 +66,57 @@
 
 % Epígrafe
 \phantomsection
-\addcontentsline{toc}{chapter}{Ep\'{\i}grafe}
+\addcontentsline{toc}{chapter}{Epigraph}
 \input{Inicio/epigrafe}
 
 \newpage
 
 % Dedicatória
 \phantomsection
-\addcontentsline{toc}{chapter}{Dedicat\'{o}ria}
+\addcontentsline{toc}{chapter}{Dedication}
 \input{Inicio/dedicatoria}
 
 \newpage
 
 % Agradecimentos
 \phantomsection
-\addcontentsline{toc}{chapter}{Agradecimentos}
+\addcontentsline{toc}{chapter}{Acknowledgements}
 \input{Inicio/agradecimentos}
 
 \newpage
 
-\renewcommand{\contentsname}{\'{I}ndice}
-\renewcommand{\listtablename}{\'{I}ndice de tabelas}
-\renewcommand{\listfigurename}{\'{I}ndice de figuras}
+\renewcommand{\contentsname}{Contents}
+\renewcommand{\listtablename}{List of Tables}
+\renewcommand{\listfigurename}{List of Figures}
 
 \phantomsection
-\addcontentsline{toc}{chapter}{\'{I}ndice}
+\addcontentsline{toc}{chapter}{Contents}
 \tableofcontents
 
 \newpage
 
 \phantomsection
-\addcontentsline{toc}{chapter}{\'{I}ndice de tabelas}
+\addcontentsline{toc}{chapter}{List of Tables}
 \listoftables
 
 \newpage
 
 \phantomsection
-\addcontentsline{toc}{chapter}{\'{I}ndice de figuras}
+\addcontentsline{toc}{chapter}{List of Figures}
 \listoffigures
 
 \newpage
 
 % Lista de abreviaturas
 \phantomsection
-\addcontentsline{toc}{chapter}{Lista de abreviaturas}
+\addcontentsline{toc}{chapter}{List of Abbreviations}
 \input{Inicio/lista_abreviaturas}
 
 \newpage
 
 % Lista de símbolos
 \phantomsection
-\addcontentsline{toc}{chapter}{Lista de s\'{\i}mbolos}
+\addcontentsline{toc}{chapter}{List of Symbols}
 \input{Inicio/lista_simbolos}
 
 \newpage
@@ -143,8 +143,8 @@
 
 % Referências bibliográficas
 \phantomsection
-\addcontentsline{toc}{chapter}{Refer\^{e}ncias bibliogr\'{a}ficas}
-\renewcommand{\bibname}{Refer\^{e}ncias bibliogr\'{a}ficas}
+\addcontentsline{toc}{chapter}{References}
+\renewcommand{\bibname}{References}
 
 %-------------------
 % Obs#3
@@ -160,8 +160,8 @@
 
 % Anexos
 \phantomsection
-\addcontentsline{toc}{chapter}{Anexos}
-\chapter*{Anexos}
+\addcontentsline{toc}{chapter}{Appendices}
+\chapter*{Appendices}
 
 % Anexo A
 %--------------------------------------
@@ -170,7 +170,7 @@
 \newcommand{\tituloanexoA}{Web Platform Input and Configuration}
 %--------------------------------------
 \phantomsection
-\addcontentsline{toc}{section}{Anexo A - \tituloanexoA}
+\addcontentsline{toc}{section}{Appendix A - \tituloanexoA}
 \input{Anexos/anexoA}
 
 \newpage
@@ -182,8 +182,20 @@
 \newcommand{\tituloanexoB}{Web Platform Results}
 %--------------------------------------
 \phantomsection
-\addcontentsline{toc}{section}{Anexo B - \tituloanexoB}
+\addcontentsline{toc}{section}{Appendix B - \tituloanexoB}
 \input{Anexos/anexoB}
+
+\newpage
+
+% Anexo C
+%--------------------------------------
+% Obs#6
+% Definir o título do anexo C
+\newcommand{\tituloanexoC}{UML Use Case Diagram}
+%--------------------------------------
+\phantomsection
+\addcontentsline{toc}{section}{Appendix C - \tituloanexoC}
+\input{Anexos/anexoC}
 
 \newpage
 

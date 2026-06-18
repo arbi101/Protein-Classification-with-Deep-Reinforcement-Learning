@@ -1,3 +1,4 @@
+% !TEX root = ../main.tex
 \chapter{Web platform}
 \label{cap3}
 
@@ -7,7 +8,10 @@ This chapter details the design, development, and testing of the interactive web
 \section{Requirement analysis}
 \label{cap3:sec_requirements}
 
-To provide a robust and accessible tool for computational biology, the web platform was designed to meet the following functional and non-functional requirements:
+To provide a robust and accessible tool for computational biology, the web platform was designed according to a set of functional and non-functional requirements. Functional requirements define the services and operations that the system must provide to users, while non-functional requirements describe quality attributes such as usability, robustness, performance, and maintainability.
+
+\subsection{Functional requirements}
+\label{cap3:subsec_functional_requirements}
 
 \begin{itemize}
     \item \textbf{Sequence Input Processing:} The system must accept protein sequences in standard FASTA format, capable of parsing multiple sequences simultaneously. A dedicated utility function strips FASTA headers (lines beginning with \texttt{>}) and validates that only legal amino acid characters are processed.
@@ -19,8 +23,19 @@ To provide a robust and accessible tool for computational biology, the web platf
     \item \textbf{Structure Visualization:} The platform must generate a visual SVG-based representation of the folded protein on a 2D HP lattice, accurately depicting Hydrophobic (H) and Polar (P) amino acids with distinct colors, rendering the backbone chain, and reporting the total computed energy.
 
     \item \textbf{3D Structure Retrieval:} As an extended feature, the system should act as a bridge to fetch known or predicted 3D structures from the \textbf{AlphaFold DB}~\cite{varadi2022alphafold} and the \textbf{ESMFold API}~\cite{lin2023evolutionary}, returning PDB-format files for further visualization.
+\end{itemize}
 
+\subsection{Non-functional requirements}
+\label{cap3:subsec_nonfunctional_requirements}
+
+\begin{itemize}
     \item \textbf{Responsiveness and Usability:} The interface must be responsive across different screen sizes and provide clear, user-friendly error messages for invalid inputs, API failures, or algorithm errors.
+
+    \item \textbf{Robustness and Error Handling:} The system must handle malformed FASTA inputs, unavailable external APIs, invalid UniProt accessions, and algorithm execution errors without causing server crashes. In these cases, the user should receive descriptive feedback.
+
+    \item \textbf{Performance Awareness:} The platform must remain suitable for interactive use by limiting the number of sequences processed per request, constraining the number of visualization frames, and using the trained DQN model for real-time inference instead of slower offline training procedures.
+
+    \item \textbf{Maintainability and Modularity:} The implementation should keep the web interface, external API communication, and algorithmic logic separated. This modular structure allows new algorithms, API integrations, or interface components to be added with minimal impact on the rest of the system.
 \end{itemize}
 
 % ─────────────────────────────────────────────────────────────────────
