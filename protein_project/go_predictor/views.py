@@ -14,6 +14,19 @@ import math
 import sys
 import os
 
+
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, default))
+    except (TypeError, ValueError):
+        return default
+
+
+IS_RENDER = bool(os.environ.get('RENDER'))
+DEFAULT_DQN_ROLLOUTS = env_int('DQN_ROLLOUTS', 20 if IS_RENDER else 200)
+MAX_DQN_ROLLOUTS = env_int('MAX_DQN_ROLLOUTS', 40 if IS_RENDER else 300)
+MAX_STRUCTURE_SEQUENCES = env_int('MAX_STRUCTURE_SEQUENCES', 1 if IS_RENDER else 5)
+
 ALGORITHM_DEFAULTS = {
     'hc_iterations': 100000,
     'sa_iterations': 100000,
@@ -26,7 +39,7 @@ ALGORITHM_DEFAULTS = {
     'remc_swap': 200,
     'remc_tmin': 0.1,
     'remc_tmax': 30.0,
-    'dqn_rollouts': 200,
+    'dqn_rollouts': DEFAULT_DQN_ROLLOUTS,
     'trace_interval': 500,
 }
 
@@ -171,7 +184,7 @@ def parse_structure_params(post_data):
         ),
         'dqn_rollouts': parse_int_param(
             post_data, 'ql_steps', ALGORITHM_DEFAULTS['dqn_rollouts'],
-            minimum=1, maximum=300,
+            minimum=1, maximum=MAX_DQN_ROLLOUTS,
         ),
         'trace_interval': parse_int_param(
             post_data, 'trace_interval', ALGORITHM_DEFAULTS['trace_interval'],
@@ -408,8 +421,7 @@ def predict_go(request):
                 trace_interval  = algorithm_params['trace_interval']
 
                 if sequences:
-                    # Process at most 5 sequences per request (performance limit)
-                    for seq_data in sequences[:5]:
+                    for seq_data in sequences[:MAX_STRUCTURE_SEQUENCES]:
                         sequence  = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)   # convert AA → HP string
                         total_steps = get_algorithm_budget(algorithm, algorithm_params, hp_string)

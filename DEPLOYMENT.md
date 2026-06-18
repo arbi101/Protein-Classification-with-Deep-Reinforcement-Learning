@@ -11,7 +11,7 @@ Build Command:
 pip install -r requirements.txt && cd protein_project && python manage.py collectstatic --noinput && python manage.py migrate
 
 Start Command:
-cd protein_project && gunicorn protein_project.wsgi:application
+cd protein_project && gunicorn protein_project.wsgi:application --workers 1 --timeout 120
 ```
 
 Add this environment variable in Render:
@@ -26,6 +26,10 @@ Optional environment variables:
 DEBUG=False
 ALLOWED_HOSTS=your-custom-domain.com
 CSRF_TRUSTED_ORIGINS=https://your-custom-domain.com
+TORCH_NUM_THREADS=1
+DQN_ROLLOUTS=20
+MAX_DQN_ROLLOUTS=40
+MAX_STRUCTURE_SEQUENCES=1
 ```
 
 For a quick secret key:

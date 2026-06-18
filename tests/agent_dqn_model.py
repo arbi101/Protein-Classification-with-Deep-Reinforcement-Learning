@@ -18,6 +18,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+try:
+    torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "1")))
+except (TypeError, ValueError, RuntimeError):
+    pass
+
 
 class ConstructiveHPEnv:
     """Minimal constructive HP environment used only for DQN inference."""
@@ -275,7 +280,7 @@ def _run_constructive_rollout(policy_net, device, hp_string, epsilon,
         if random.random() < epsilon:
             action = random.randrange(3)
         else:
-            with torch.no_grad():
+            with torch.inference_mode():
                 state_tensor = torch.as_tensor(
                     state, dtype=torch.float32, device=device
                 ).unsqueeze(0)
