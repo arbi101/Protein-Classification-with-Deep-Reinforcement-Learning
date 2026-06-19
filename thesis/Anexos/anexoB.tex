@@ -17,6 +17,8 @@ This appendix presents representative output screens produced by the web platfor
 
 Figures~\ref{fig:appendix_2d_structure_step_initial}--\ref{fig:appendix_2d_structure_step_final} illustrate the step explorer added to the 2D structure visualization workflow. Instead of showing only the final conformation, the platform stores intermediate frames according to the user-defined interval and lets the user navigate the folding trajectory with previous, play, next, and slider controls. For the constructive DQN, each displayed step corresponds to one or more residues added during chain construction; for classical algorithms, each displayed step corresponds to a sampled optimization interval.
 
+In the deployed web version, the number of DQN rollouts was scaled down due to the limited computational resources of the hosting environment.
+
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth,height=0.70\textheight,keepaspectratio]{Figuras/2dStructure.png}

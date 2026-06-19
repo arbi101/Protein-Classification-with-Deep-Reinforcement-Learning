@@ -192,7 +192,7 @@
                                     <div class="grid grid-cols-2 gap-2">
                                         <div>
                                             <label class="text-xs font-medium text-slate-700">Rollouts:</label>
-                                            <input type="number" name="ql_steps" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.dqn_rollouts|default:200 }}" min="50" step="50">
+                                            <input type="number" name="ql_steps" class="w-full mt-1 px-2 py-1 border border-slate-300 rounded text-sm" value="{{ algorithm_params.dqn_rollouts|default:dqn_rollout_default }}" min="{{ dqn_rollout_min }}" max="{{ dqn_rollout_max }}" step="1">
                                         </div>
                                     </div>
                                 </div>
@@ -897,8 +897,9 @@ document.addEventListener('DOMContentLoaded', function() {
             bad: 'Enter a valid maximum REMC temperature.'
         },
         ql_steps: {
-            min: 'Enter at least 50 DQN rollouts.',
-            step: 'Use increments of 50 for DQN rollouts.',
+            min: 'Enter at least {{ dqn_rollout_min }} DQN rollout.',
+            max: 'Enter no more than {{ dqn_rollout_max }} DQN rollouts.',
+            step: 'Use whole numbers for DQN rollouts.',
             bad: 'Enter a valid number of DQN rollouts.'
         },
         trace_interval: {

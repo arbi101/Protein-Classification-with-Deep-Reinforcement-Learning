@@ -23,8 +23,10 @@ def env_int(name, default):
 
 
 IS_RENDER = bool(os.environ.get('RENDER'))
-DEFAULT_DQN_ROLLOUTS = env_int('DQN_ROLLOUTS', 20 if IS_RENDER else 200)
+MIN_DQN_ROLLOUTS = 1
 MAX_DQN_ROLLOUTS = env_int('MAX_DQN_ROLLOUTS', 40 if IS_RENDER else 300)
+DEFAULT_DQN_ROLLOUTS = env_int('DQN_ROLLOUTS', 20 if IS_RENDER else 200)
+DEFAULT_DQN_ROLLOUTS = max(MIN_DQN_ROLLOUTS, min(DEFAULT_DQN_ROLLOUTS, MAX_DQN_ROLLOUTS))
 MAX_STRUCTURE_SEQUENCES = env_int('MAX_STRUCTURE_SEQUENCES', 1 if IS_RENDER else 5)
 
 ALGORITHM_DEFAULTS = {
@@ -563,6 +565,9 @@ def predict_go(request):
         'error_message':      error_message,
         'selected_algorithm': selected_algorithm,
         'algorithm_params':   algorithm_params,
+        'dqn_rollout_min':    MIN_DQN_ROLLOUTS,
+        'dqn_rollout_max':    MAX_DQN_ROLLOUTS,
+        'dqn_rollout_default': DEFAULT_DQN_ROLLOUTS,
         'year':               year
     })
 
