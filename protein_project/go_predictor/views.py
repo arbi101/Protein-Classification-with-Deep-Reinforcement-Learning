@@ -16,19 +16,26 @@ import os
 
 
 def env_int(name, default):
+    """Read an integer environment variable, falling back safely."""
+
     try:
         return int(os.environ.get(name, default))
     except (TypeError, ValueError):
+        # A malformed deployment setting should not prevent Django from booting.
         return default
 
 
+# Render has tighter CPU and request-time limits than local development, so the
+# online deployment uses smaller DQN and multi-sequence workloads by default.
 IS_RENDER = bool(os.environ.get('RENDER'))
 MIN_DQN_ROLLOUTS = 1
 MAX_DQN_ROLLOUTS = env_int('MAX_DQN_ROLLOUTS', 40 if IS_RENDER else 300)
 DEFAULT_DQN_ROLLOUTS = env_int('DQN_ROLLOUTS', 20 if IS_RENDER else 200)
+# Clamp the configured default between the hard minimum and maximum.
 DEFAULT_DQN_ROLLOUTS = max(MIN_DQN_ROLLOUTS, min(DEFAULT_DQN_ROLLOUTS, MAX_DQN_ROLLOUTS))
 MAX_STRUCTURE_SEQUENCES = env_int('MAX_STRUCTURE_SEQUENCES', 1 if IS_RENDER else 5)
 
+# Central defaults used both by the backend and by the parameter form.
 ALGORITHM_DEFAULTS = {
     'hc_iterations': 100000,
     'sa_iterations': 100000,
@@ -45,6 +52,8 @@ ALGORITHM_DEFAULTS = {
     'trace_interval': 500,
 }
 
+# Values displayed as recommended settings in the results page. They are fixed
+# configuration values, not parameters optimized dynamically for each protein.
 BEST_ALGORITHM_PARAMS = {
     'hc': {'Iterations': ALGORITHM_DEFAULTS['hc_iterations']},
     'sa': {
@@ -70,6 +79,7 @@ BEST_ALGORITHM_PARAMS = {
     },
 }
 
+# Translate short form values into labels suitable for the user interface.
 ALGORITHM_LABELS = {
     'hc': 'Hill Climbing',
     'sa': 'Simulated Annealing',
@@ -80,6 +90,11 @@ ALGORITHM_LABELS = {
 
 
 def build_used_params(algorithm, params):
+    """Return only the parameters relevant to the selected algorithm.
+
+    Non-applicable entries are set to None and ignored by the template.
+    """
+
     return {
         'Model': 'DQN' if algorithm == 'ql' else None,
         'Iterations': (
@@ -102,6 +117,8 @@ def build_used_params(algorithm, params):
 
 
 def get_algorithm_budget(algorithm, params, hp_string):
+    """Return the number of optimization/construction steps for tracing."""
+
     if algorithm == 'hc':
         return params['hc_iterations']
     if algorithm == 'sa':
@@ -110,17 +127,25 @@ def get_algorithm_budget(algorithm, params, hp_string):
         return params['mc_iterations']
     if algorithm == 'remc':
         return params['remc_iterations']
+    # DQN constructs one residue at a time, unlike iteration-based algorithms.
     return len(hp_string)
 
 
 def clamp_trace_interval(algorithm, requested_interval, total_steps, max_frames=200):
+    """Choose a trace interval that keeps the animation reasonably small."""
+
+    # Classical algorithms may execute hundreds of thousands of iterations;
+    # DQN traces are short and can be recorded residue by residue.
     min_interval = 1 if algorithm == 'ql' else 500
     requested_interval = max(min_interval, int(requested_interval))
+    # Increase the interval when needed so no more than max_frames are created.
     frame_limited_interval = max(1, math.ceil(max(1, total_steps) / max_frames))
     return max(requested_interval, frame_limited_interval), max_frames
 
 
 def parse_int_param(post_data, name, default, minimum=None, maximum=None):
+    """Read and range-check one integer submitted by the HTML form."""
+
     value = int(post_data.get(name, default))
     if minimum is not None and value < minimum:
         raise ValueError(f"{name} must be at least {minimum}.")
@@ -130,6 +155,8 @@ def parse_int_param(post_data, name, default, minimum=None, maximum=None):
 
 
 def parse_float_param(post_data, name, default, minimum=None, maximum=None):
+    """Read and range-check one floating-point form parameter."""
+
     value = float(post_data.get(name, default))
     if minimum is not None and value < minimum:
         raise ValueError(f"{name} must be at least {minimum}.")
@@ -139,6 +166,10 @@ def parse_float_param(post_data, name, default, minimum=None, maximum=None):
 
 
 def parse_structure_params(post_data):
+    """Validate all configurable 2D-folding parameters from POST data."""
+
+    # All values are parsed in one place so every algorithm receives numeric,
+    # bounded parameters even if a request bypasses browser-side validation.
     return {
         'hc_iterations': parse_int_param(
             post_data, 'hc_iterations', ALGORITHM_DEFAULTS['hc_iterations'],
@@ -185,6 +216,8 @@ def parse_structure_params(post_data):
             minimum=5,
         ),
         'dqn_rollouts': parse_int_param(
+            # ql_steps is the historical HTML field name; the implementation
+            # now uses a trained DQN and interprets it as a rollout count.
             post_data, 'ql_steps', ALGORITHM_DEFAULTS['dqn_rollouts'],
             minimum=1, maximum=MAX_DQN_ROLLOUTS,
         ),
@@ -196,9 +229,13 @@ def parse_structure_params(post_data):
 
 
 def positions_to_structure(positions, hp_string):
+    """Convert lattice coordinates into dictionaries consumed by the SVG UI."""
+
     if not positions:
+        # min() and max() cannot operate on an empty coordinate list.
         return [], 0, 0
 
+    # Find the occupied lattice bounds for normalized grid coordinates.
     xs = [x for x, y in positions]
     ys = [y for x, y in positions]
     min_x, max_x = min(xs), max(xs)
@@ -206,6 +243,8 @@ def positions_to_structure(positions, hp_string):
     width = max_x - min_x + 1
     height = max_y - min_y + 1
 
+    # Preserve original coordinates for SVG rendering and add normalized grid
+    # coordinates for layout-related uses. The index links each point to H/P.
     structure = [
         {
             'x': x,
@@ -220,9 +259,14 @@ def positions_to_structure(positions, hp_string):
 
 
 def build_step_frames(trace_frames, hp_string, algorithm):
+    """Normalize algorithm traces for the browser's step explorer."""
+
+    # Classical traces refer to optimizer iterations; constructive DQN traces
+    # refer to the number of residues placed so far.
     frame_label = 'Residue' if algorithm == 'ql' else 'Iteration'
     step_frames = []
     for frame in trace_frames:
+        # Width and height are not required for individual animation frames.
         frame_structure, _, _ = positions_to_structure(frame['positions'], hp_string)
         step_frames.append({
             'step': frame['step'],
@@ -357,7 +401,8 @@ def predict_go(request):
     Returns an HTTP response by rendering the 'predict.html' template with
     all result data passed as context variables.
     """
-    # Initialise all template context variables to safe defaults
+    # Initialise every template context value before branching. This lets the
+    # same template handle GET requests, failed forms and all result types.
     result = None
     results = []
     structure = None
@@ -370,6 +415,7 @@ def predict_go(request):
     algorithm_params = ALGORITHM_DEFAULTS.copy()
 
     if request.method == 'POST':
+        # Bind the submitted values to the form so Django can validate them.
         form = ProteinSearchForm(request.POST)
         if form.is_valid():
             # Extract validated form fields
@@ -408,6 +454,7 @@ def predict_go(request):
                     error_message = "Invalid parameter values. Using defaults."
                     algorithm_params = ALGORITHM_DEFAULTS.copy()
 
+                # Local names keep the dispatch calls below short and explicit.
                 hc_iterations   = algorithm_params['hc_iterations']
                 sa_iterations   = algorithm_params['sa_iterations']
                 sa_initial_t    = algorithm_params['sa_initial_t']
@@ -423,6 +470,8 @@ def predict_go(request):
                 trace_interval  = algorithm_params['trace_interval']
 
                 if sequences:
+                    # Slice the list to protect synchronous web requests from
+                    # unexpectedly large CPU workloads.
                     for seq_data in sequences[:MAX_STRUCTURE_SEQUENCES]:
                         sequence  = seq_data['sequence']
                         hp_string = sequence_to_hp(sequence)   # convert AA → HP string
@@ -432,6 +481,7 @@ def predict_go(request):
                             trace_interval,
                             total_steps,
                         )
+                        # Report the interval actually used after frame limiting.
                         algorithm_params['trace_interval'] = effective_trace_interval
 
                         # ── Dispatch to the selected algorithm ────────────
@@ -490,6 +540,8 @@ def predict_go(request):
                         used_params = build_used_params(algorithm, algorithm_params)
                         best_params = BEST_ALGORITHM_PARAMS.get(algorithm, {})
 
+                        # Store one self-contained result object per sequence;
+                        # predict.html iterates over this list to render cards.
                         structures.append({
                             'name':        seq_data['header'] or f'Sequence {len(structures)+1}',
                             'structure':   structure,    # list of residue dicts for SVG
@@ -512,6 +564,7 @@ def predict_go(request):
             elif action == 'alphafold':
                 alphafold_results = []
                 if sequences:
+                    # 3D requests call external services, so process at most five.
                     for seq_data in sequences[:5]:   # max 5 sequences at once
                         header    = seq_data['header']
                         sequence  = seq_data['sequence']
@@ -592,6 +645,7 @@ def parse_fasta(fasta_str):
     -------
     list of {'header': str, 'sequence': str}
     """
+    # Keep parser state until a new header closes the current FASTA record.
     sequences = []
     current_header = ''
     current_seq = ''
@@ -631,6 +685,7 @@ def sequence_to_hp(sequence):
     sequence : str  One-letter amino acid sequence (uppercase)
     Returns  : str  HP binary string of the same length
     """
+    # Set membership is efficient and makes the classification easy to read.
     hydrophobic = set('ACFILMVWY')  # standard hydrophobic residue set
     hp_string = ''
     for aa in sequence:
@@ -670,6 +725,7 @@ def call_deepgo_api(sequence):
         'version': '1.0.3'
     }
     try:
+        # json= serializes the dictionary and sets the JSON content type.
         response = requests.post(url, json=json_data)
         response.raise_for_status()                 # raise on HTTP errors
         api_result = response.json()
@@ -702,6 +758,8 @@ def parse_deepgo_result(api_result):
     if not api_result or 'predictions' not in api_result or not api_result['predictions']:
         return None   # malformed or empty response
 
+    # The web interface sends one sequence per API call, so the first item is
+    # the prediction corresponding to that sequence.
     pred = api_result['predictions'][0]   # first prediction in the list
 
     # Extract protein name from protein_info field

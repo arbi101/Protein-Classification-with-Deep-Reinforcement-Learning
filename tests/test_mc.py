@@ -9,10 +9,15 @@ throughout the run. It applies the Metropolis acceptance criterion to
 occasionally accept moves that worsen the energy, allowing limited
 exploration around the current energy level — but without the
 progressive cooling that makes SA so effective at minimization.
+
+The Django backend imports generate_2d_structure_mc() from this module directly.
 """
 
+# math is required by the constant-temperature Boltzmann probability.
 import math
+# random selects proposals and decides acceptance of worse conformations.
 import random
+# time is used by the command-line benchmark at the end of the module.
 import time
 
 
@@ -94,9 +99,12 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0,
     # Track the globally best solution encountered during the run
     best_positions = list(current_positions)
     best_energy = current_energy
+    # Optional snapshots are consumed by Django's SVG step explorer.
     trace_frames = []
 
     def add_trace_frame(step):
+        """Save one copy of the best-known conformation for visualization."""
+
         if not return_trace:
             return
         if len(trace_frames) >= max_trace_frames:
@@ -107,6 +115,7 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0,
             "positions": list(best_positions),
         })
 
+    # Defensively normalize trace arguments supplied by any caller.
     trace_interval = max(1, int(trace_interval))
     max_trace_frames = max(2, int(max_trace_frames))
     add_trace_frame(0)
@@ -246,9 +255,11 @@ def generate_2d_structure_mc(hp_string, iterations=100000, temperature=2.0,
                     current_energy = new_energy
                     # Note: global best NOT updated here (energy worsened)
 
+        # Trace the global minimum periodically instead of every proposal.
         if step % trace_interval == 0:
             add_trace_frame(step)
 
+    # Always make the final best result available to the animation.
     if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
         add_trace_frame(iterations)
 
@@ -275,12 +286,14 @@ if __name__ == "__main__":
 
     print("=== TEST BASIC MONTE CARLO ALGORITHM (CONSTANT TEMP) ===\n")
 
+    # This bottom section is an offline smoke/convergence benchmark.
     for name, seq in proteins:
         hp_str = sequence_to_hp(seq)
         print(f"--- {name} ---")
         print(f"Sequence : {seq}")
         print(f"HP String: {hp_str}\n")
 
+        # Increasing iterations exposes the quality/runtime trade-off.
         for iters in iterations_to_test:
             start_time = time.time()
             # Run MC at constant temperature T=2.0

@@ -10,11 +10,17 @@ replicas attempt to SWAP their conformations. This allows low-temperature
 replicas (which exploit good solutions) to benefit from high-temperature
 configurations (which explore broadly), greatly improving the sampling
 of the energy landscape and the quality of the final minimum found.
+
+The Django backend imports generate_2d_structure_remc() from this module directly.
 """
 
+# enum is retained for compatibility with earlier REMC experiment revisions.
 import enum
+# math supplies logarithmic temperature spacing and exchange probabilities.
 import math
+# random drives each replica's proposal and exchange decisions.
 import random
+# time is used by the standalone benchmark section.
 import time
 
 
@@ -111,6 +117,8 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
     # ── Replica initialization ────────────────────────────────────────────
     # Each replica starts from the same straight-line conformation.
     # They will quickly diverge as each follows its own MC trajectory.
+    # Every replica starts valid and identical; their different temperatures
+    # cause trajectories to diverge as soon as stochastic sampling begins.
     replicas_pos = [[(j, 0) for j in range(len(hp_string))]
                     for _ in range(num_replicas)]
     # Pre-compute the initial energy for each replica
@@ -119,9 +127,12 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
     # Global best tracks the single best conformation seen across ALL replicas
     global_best_pos    = list(replicas_pos[0])
     global_best_energy = replicas_en[0]
+    # The trace follows the best solution across all replicas, not one replica.
     trace_frames = []
 
     def add_trace_frame(step):
+        """Store a bounded copy of the current global REMC minimum."""
+
         if not return_trace:
             return
         if len(trace_frames) >= max_trace_frames:
@@ -132,6 +143,7 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
             "positions": list(global_best_pos),
         })
 
+    # Normalize trace settings before the expensive nested replica loop.
     trace_interval = max(1, int(trace_interval))
     max_trace_frames = max(2, int(max_trace_frames))
     add_trace_frame(0)
@@ -274,9 +286,11 @@ def generate_2d_structure_remc(hp_string, iterations=300_000,
                 replicas_en[idx], replicas_en[j_idx] = \
                     replicas_en[j_idx], replicas_en[idx]
 
+        # Record only sampled global-best states to control response size.
         if step % trace_interval == 0:
             add_trace_frame(step)
 
+    # Include the final global minimum even if no trace boundary matched it.
     if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
         add_trace_frame(iterations)
 

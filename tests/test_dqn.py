@@ -3,6 +3,10 @@ test_dqn.py
 -----------
 Training script for the Deep Q-Network (DQN) agent.
 
+This trains the older move-based agent from agent_dqn.py. The current Django
+website uses separately trained constructive weights through
+agent_dqn_model.py, so this file remains for experiment reproducibility.
+
 This script:
   1. Loads a set of realistic UniProt protein sequences
   2. Trains a SHARED DQN agent across all proteins (transfer learning)
@@ -51,7 +55,8 @@ from collections import deque
 from test_ql import sequence_to_hp, calculate_energy, apply_move, MOVE_TYPES
 # Import the function that loads the 20 benchmark UniProt protein sequences
 from compare_hc_sa_multistep import fetch_realistic_proteins
-# Import the DQN agent and grid encoding function
+# Import the historical move-based DQN and its 200x200 state encoder. The final
+# website model is the separate constructive implementation in agent_dqn_model.
 from agent_dqn import DQNAgent, positions_to_grid
 
 
@@ -87,7 +92,8 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
     """
     n = len(hp_string)  # number of residues in the sequence
 
-    # Create a new DQN agent if one wasn't provided
+    # Reusing a provided agent preserves neural weights across proteins; passing
+    # None starts an independent training experiment.
     if agent is None:
         # lr=5e-4: slightly lower learning rate for more stable training
         agent = DQNAgent(num_actions=len(MOVE_TYPES), lr=5e-4)
@@ -103,6 +109,7 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
     losses = []  # track training losses for progress reporting
 
     # ── Training loop: one episode = one folding attempt from scratch ──────
+    # Geometry resets every episode, while replay/network knowledge persists.
     for episode in range(episodes):
         # Reset conformation to straight line at the start of each episode
         current_positions = [(i, 0) for i in range(n)]
@@ -113,12 +120,14 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
         # ── Linear ε decay based on episode number ─────────────────────────
         # ε decreases from epsilon_start to epsilon_end over the first
         # epsilon_decay_episodes episodes, then stays at epsilon_end
+        # Clamp at epsilon_end so a small amount of exploration always remains.
         epsilon = max(
             epsilon_end,
             epsilon_start - (epsilon_start - epsilon_end) * episode / epsilon_decay_episodes
         )
 
         # ── Steps within this episode ──────────────────────────────────────
+        # One inner iteration collects and learns from one transition.
         for step in range(max_steps_per_episode):
             # Select action using ε-greedy policy
             action_idx = agent.select_action(current_state, epsilon)
@@ -150,6 +159,7 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
 
             # ── Store transition in the replay buffer ──────────────────────
             # Each transition (s, a, r, s') is saved for later training
+            # Replay storage decouples data collection from mini-batch training.
             agent.memory.push(current_state, action_idx, reward, next_state)
 
             # ── Train the policy network on a random mini-batch ───────────
@@ -172,6 +182,7 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
         # ── Target network synchronization ────────────────────────────────
         # Every target_update_freq episodes, copy policy weights to target net.
         # This stabilizes the Q-value targets used in training.
+        # Keep the target fixed between periodic policy-to-target copies.
         if episode % target_update_freq == 0:
             agent.update_target_network()
 
@@ -185,6 +196,7 @@ def generate_2d_structure_dqn(hp_string, agent=None, episodes=1000,
                   f"Eps: {epsilon:.2f} | "
                   f"Avg Loss: {avg_loss:.4f}")
 
+    # The reusable agent already stores learned weights, so return fold data only.
     return best_positions, best_energy
 
 
@@ -216,6 +228,7 @@ def main():
     # patterns learned on one protein can be reused on the next.
     shared_agent = DQNAgent(num_actions=len(MOVE_TYPES), lr=5e-4)
 
+    # Sequential processing retains network weights as transferable knowledge.
     for name, seq in test_proteins:
         # ── Clear the replay buffer between proteins ───────────────────────
         # This is necessary because different proteins produce different grid
@@ -250,10 +263,10 @@ def main():
         res = f"  -> DQN Best Energy: {best_energy} | Time: {elapsed:.2f}s"
         print(res)
 
-        # ── Save trained weights to disk ───────────────────────────────────
-        # The Django web app loads these weights for inference.
-        # Weights are updated after EVERY protein so the latest model is
-        # always available even if training is interrupted.
+        # ── Save historical move-based weights to disk ────────────────────
+        # Save after EVERY protein so an interrupted experiment still leaves
+        # recoverable weights. The current Django site instead loads the
+        # constructive checkpoint through agent_dqn_model.py.
         torch.save(shared_agent.policy_net.state_dict(), 'dqn_weights.pth')
         print(f"  [+] Weights updated and saved to tests/dqn_weights.pth after {name}\n")
 

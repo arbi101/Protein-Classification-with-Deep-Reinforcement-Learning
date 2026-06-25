@@ -7,9 +7,13 @@ prediction using the HP (Hydrophobic-Polar) lattice model.
 HC is a greedy local search: it only accepts moves that improve or
 maintain the current energy (no temperature, no randomness beyond
 the move selection itself).
+
+The Django backend imports generate_2d_structure() from this module directly.
 """
 
+# random chooses move types, residues and geometrically valid destinations.
 import random
+# time is used only by the executable benchmark section at the bottom.
 import time
 
 
@@ -119,12 +123,18 @@ def generate_2d_structure(hp_string, iterations=1000000, return_trace=False,
     # Keep track of the globally best conformation seen during the search
     best_positions = list(current_positions)
     best_energy = current_energy
+    # Optional trace data is kept separate from the optimization state. Django
+    # uses these snapshots to animate how the best solution evolves.
     trace_frames = []
 
     def add_trace_frame(step):
+        """Store a defensive copy of the best fold at one iteration."""
+
         if not return_trace:
+            # Avoid all trace memory overhead for command-line benchmarks.
             return
         if len(trace_frames) >= max_trace_frames:
+            # Stop appending once the browser-safe frame budget is exhausted.
             return
         trace_frames.append({
             "step": step,
@@ -132,6 +142,7 @@ def generate_2d_structure(hp_string, iterations=1000000, return_trace=False,
             "positions": list(best_positions),
         })
 
+    # Normalize trace controls in case the function is called outside Django.
     trace_interval = max(1, int(trace_interval))
     max_trace_frames = max(2, int(max_trace_frames))
     add_trace_frame(0)
@@ -284,12 +295,16 @@ def generate_2d_structure(hp_string, iterations=1000000, return_trace=False,
                     best_positions = list(current_positions)
                     best_energy = current_energy
 
+        # Periodically record the global best, not merely the current proposal.
         if step % trace_interval == 0:
             add_trace_frame(step)
 
+    # Ensure the animation has a final frame even when iterations is not an
+    # exact multiple of trace_interval.
     if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
         add_trace_frame(iterations)
 
+    # Preserve the original two-value API unless tracing was explicitly asked.
     if return_trace:
         return best_positions, best_energy, trace_frames
     return best_positions, best_energy
@@ -327,6 +342,7 @@ if __name__ == "__main__":
 
     print("=== TEST HILL CLIMBING ALGORITHM WITH 10 PROTEINS ===\n")
 
+    # The following code is a standalone benchmark and is not run on import.
     for name, seq in proteins:
         # Convert the amino acid sequence to HP binary string
         hp_str = sequence_to_hp(seq)
@@ -340,6 +356,7 @@ if __name__ == "__main__":
         best_energies = []
         times_taken = []
 
+        # Re-run the same protein with larger search budgets to study convergence.
         for iters in iterations_to_test:
             start_time = time.time()
             # Run Hill Climbing with the given iteration budget

@@ -8,10 +8,15 @@ SA extends Hill Climbing by occasionally accepting moves that WORSEN
 the energy. This is controlled by a temperature parameter T that
 decreases over time (cooling schedule), allowing the algorithm to
 escape local minima early in the search.
+
+The Django backend imports generate_2d_structure_sa() from this module directly.
 """
 
+# math provides the exponential cooling and Metropolis probability formulas.
 import math
+# random drives stochastic move proposals and probabilistic acceptance.
 import random
+# time is used by the standalone benchmark only.
 import time
 
 
@@ -100,9 +105,12 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
     # Global best tracker (separate from the random-walk current state)
     best_positions = list(current_positions)
     best_energy = current_energy
+    # Trace frames contain copies of the global best for the web animation.
     trace_frames = []
 
     def add_trace_frame(step):
+        """Record one bounded snapshot without altering the search state."""
+
         if not return_trace:
             return
         if len(trace_frames) >= max_trace_frames:
@@ -113,6 +121,7 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
             "positions": list(best_positions),
         })
 
+    # Normalize externally supplied trace options before entering the loop.
     trace_interval = max(1, int(trace_interval))
     max_trace_frames = max(2, int(max_trace_frames))
     add_trace_frame(0)
@@ -259,9 +268,11 @@ def generate_2d_structure_sa(hp_string, iterations=100000, initial_t=30.0, final
                     current_energy = new_energy
                     # Note: global best is NOT updated here since energy worsened
 
+        # Sampling avoids returning one large object per optimization iteration.
         if step % trace_interval == 0:
             add_trace_frame(step)
 
+    # Append the terminal state when periodic sampling did not land on it.
     if return_trace and (not trace_frames or trace_frames[-1]["step"] != iterations):
         add_trace_frame(iterations)
 
@@ -299,6 +310,7 @@ if __name__ == "__main__":
 
     print("=== TEST SIMULATED ANNEALING ALGORITHM WITH 10 PROTEINS ===\n")
 
+    # Standalone convergence experiment; Django never executes this block.
     for name, seq in proteins:
         hp_str = sequence_to_hp(seq)
         h_count = hp_str.count('H')
@@ -306,6 +318,7 @@ if __name__ == "__main__":
         print(f"Sequence : {seq}")
         print(f"HP String: {hp_str} (H count: {h_count})\n")
 
+        # Compare the same method under successively larger iteration budgets.
         for iters in iterations_to_test:
             start_time = time.time()
             # Run SA with exponential cooling from 10.0 → 0.01

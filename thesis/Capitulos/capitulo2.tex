@@ -75,7 +75,7 @@ In the implementation, the four move types are sampled with weights $[0.2, 0.3, 
 \section{Classical optimization methods}
 \label{cap2:sec_comp_methods}
 
-Because exact enumeration is infeasible, three classical heuristic search algorithms were implemented and benchmarked as baselines.
+Because exact enumeration is infeasible, four classical heuristic methods were implemented and benchmarked as baselines.
 
 \subsection{Hill Climbing}
 \label{cap2:subsec_hc}
@@ -128,7 +128,7 @@ In this project, an \textbf{exponential cooling schedule} is used:
     T_i = T_0 \cdot \left(\frac{T_f}{T_0}\right)^{i / (T_{\max} - 1)}
     \label{eq:sa_cooling}
 \end{equation}
-where $T_0 = 10.0$ is the initial temperature, $T_f = 0.01$ is the final temperature, and $i$ is the current iteration index.
+where $T_0 = 30.0$ is the initial temperature, $T_f = 0.001$ is the final temperature, and $i$ is the current iteration index.
 
 \begin{algorithm}[H]
 \caption{Simulated Annealing for HP folding}

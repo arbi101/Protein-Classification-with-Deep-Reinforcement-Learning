@@ -1,4 +1,6 @@
+{# Reuse the shared HTML shell, external libraries and footer from base.html. #}
 {% extends "base.html" %}
+{# Load Django's static helper and the custom GO score-color filter. #}
 {% load static %}
 {% load go_tags %}
 
@@ -33,13 +35,18 @@
             </p>
         </div>
         <div class="p-6">
+            <!-- All three workflows submit to the same Django view. The value
+                 of the clicked action button selects the backend branch. -->
             <form method="post" class="space-y-4">
+                <!-- Required protection for every Django POST form. -->
                 {% csrf_token %}
                 <div>
                     <label for="{{ form.fasta_sequence.id_for_label }}" class="block text-sm font-medium text-slate-700 mb-2">
                         {{ form.fasta_sequence.label }}
                     </label>
                     <small class="text-slate-500">{{ form.fasta_sequence.help_text }}</small>
+                    <!-- Field names and IDs come from ProteinSearchForm, while
+                         the textarea markup is controlled directly here. -->
                     <textarea
                         name="{{ form.fasta_sequence.name }}"
                         id="{{ form.fasta_sequence.id_for_label }}"
@@ -47,11 +54,14 @@
                         placeholder=">ProteinName&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ"
                         required
                     >{{ form.fasta_sequence.value|default:">TestProtein1&#10;MKTAYIAKQRQISFVKSHFSRQLEERLGLIEVQ" }}</textarea>
+                    <!-- Server-side validation errors survive the POST and are
+                         rendered next to the submitted sequence. -->
                     {% if form.fasta_sequence.errors %}
                         <div class="text-red-600 text-sm mt-1">{{ form.fasta_sequence.errors }}</div>
                     {% endif %}
                 </div>
                 <div class="flex flex-wrap gap-3 mt-6">
+                    <!-- The action name/value pair is read from request.POST. -->
                     <button type="submit" name="action" value="predict" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm transition-colors disabled:opacity-50">
                         Predict GO
                     </button>
@@ -65,6 +75,8 @@
 
                 <hr class="my-6 border-slate-200 {% if not structures %}hidden{% endif %}" id="algorithm-separator">
 
+                <!-- This panel is initially hidden and opened by the 2D button.
+                     Each radio value maps to one dispatch branch in views.py. -->
                 <div class="mb-2 {% if not structures %}hidden{% endif %}" id="algorithm-section">
                     <h4 class="text-sm font-semibold text-slate-700 mb-4">Choose the algorithm and configure parameters</h4>
                     <div class="space-y-4">
@@ -229,6 +241,7 @@
         </div>
     </div>
 
+    {# Backend/API errors are independent from field-level form errors. #}
     {% if error_message %}
         <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
             <div class="flex items-center gap-2">
@@ -238,6 +251,7 @@
         </div>
     {% endif %}
 
+    {# One card is rendered for each successfully processed 2D sequence. #}
     {% if structures %}
         {% for struct in structures %}
         <div class="bg-white rounded-lg shadow-lg border border-slate-200 mb-8 overflow-hidden">
@@ -289,6 +303,8 @@
             <!-- SVG Canvas section -->
             <div class="p-6">
                 <div class="w-full bg-slate-50 rounded-xl border border-slate-100 shadow-inner overflow-auto">
+                    <!-- Python-generated lattice coordinates are embedded as
+                         data attributes and converted into SVG by JavaScript. -->
                     <svg id="svg-{{ forloop.counter }}" class="protein-svg block mx-auto"
                          data-structure="{{ struct.structure|safe }}"
                          data-step-frames="{{ struct.step_frames|safe }}"
@@ -311,6 +327,7 @@
                     </div>
                 </div>
 
+                <!-- The explorer is useful only when multiple trace frames exist. -->
                 {% if struct.step_frames|length > 1 %}
                 <div class="step-explorer mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                      data-svg-id="svg-{{ forloop.counter }}">
@@ -443,6 +460,7 @@
         {% endfor %}
     {% endif %}
 
+    {# DeepGO results are grouped into the three Gene Ontology domains. #}
     {% if results %}
         {% for result in results %}
         <!-- Results Section -->
@@ -483,9 +501,10 @@
                             {% for cat in result.categories %}
                                 {% if cat.title == 'Cellular Components' %}
                                     {% for term in cat.terms %}
-                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                        <!-- get_score_color is defined in templatetags/go_tags.py. -->
+                                        <a href="https://amigo.geneontology.org/amigo/term/{{ term.go|urlencode }}" target="_blank" rel="noopener noreferrer" class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer inline-flex items-center" title="Open {{ term.go }} in AmiGO. Score: {{ term.score|floatformat:3 }}">
                                             <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
-                                        </span>
+                                        </a>
                                     {% endfor %}
                                 {% endif %}
                             {% endfor %}
@@ -504,9 +523,9 @@
                             {% for cat in result.categories %}
                                 {% if cat.title == 'Molecular Functions' %}
                                     {% for term in cat.terms %}
-                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                        <a href="https://amigo.geneontology.org/amigo/term/{{ term.go|urlencode }}" target="_blank" rel="noopener noreferrer" class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer inline-flex items-center" title="Open {{ term.go }} in AmiGO. Score: {{ term.score|floatformat:3 }}">
                                             <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
-                                        </span>
+                                        </a>
                                     {% endfor %}
                                 {% endif %}
                             {% endfor %}
@@ -525,9 +544,9 @@
                             {% for cat in result.categories %}
                                 {% if cat.title == 'Biological Processes' %}
                                     {% for term in cat.terms %}
-                                        <span class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer" title="Score: {{ term.score|floatformat:3 }}">
+                                        <a href="https://amigo.geneontology.org/amigo/term/{{ term.go|urlencode }}" target="_blank" rel="noopener noreferrer" class="badge {{ term.score|get_score_color }} px-4 py-2 text-sm font-medium border rounded-full shadow-sm hover:shadow-md transition-shadow cursor-pointer inline-flex items-center" title="Open {{ term.go }} in AmiGO. Score: {{ term.score|floatformat:3 }}">
                                             <span class="font-semibold">{{ term.go }}</span> - {{ term.label }} - {{ term.score|floatformat:2 }}
-                                        </span>
+                                        </a>
                                     {% endfor %}
                                 {% endif %}
                             {% endfor %}
@@ -539,6 +558,7 @@
         {% endfor %}
     {% endif %}
 
+    {# 3D results contain either a remote PDB URL or inline PDB text. #}
     {% if alphafold_results %}
         <!-- Include 3Dmol.js Library -->
         <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
@@ -573,7 +593,8 @@
                         <p class="text-sm text-slate-600">Drag to rotate. Scroll to zoom. The structure is colored by spectrum.</p>
                     </div>
                     
-                    <!-- 3Dmol.js Viewer -->
+                    <!-- 3Dmol reads AlphaFold data from data-href or ESMFold
+                         text from the hidden textarea referenced below. -->
                     <div class="viewer_3Dmoljs w-full bg-slate-900 rounded-xl overflow-hidden shadow-inner border border-slate-700" style="height: 500px; position: relative;"
                          {% if res.pdb_url %}data-href="{{ res.pdb_url }}"{% else %}data-element="pdb_data_{{ forloop.counter }}" data-datatype="pdb"{% endif %}
                          data-backgroundcolor="0x0f172a" 
@@ -594,6 +615,7 @@
         {% endfor %}
     {% endif %}
 
+    {# Show guidance only while no workflow result is available. #}
     {% if not results and not structures and not alphafold_results %}
         <!-- Info Footer -->
         <div class="bg-blue-50 border border-blue-200 rounded-lg shadow-lg mt-8">
@@ -731,6 +753,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Wait until Django-rendered elements exist before attaching UI behavior.
     // ===== Algorithm Selection Control =====
     const generateBtn = document.getElementById('generate-2d-btn');
     const algoSection = document.getElementById('algorithm-section');
@@ -739,6 +762,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const fastaInput = document.getElementById('{{ form.fasta_sequence.id_for_label }}');
 
     function validateFastaInput() {
+        // This gives immediate browser feedback. ProteinSearchForm performs the
+        // authoritative validation again on the server.
         if (!fastaInput) return true;
         const value = fastaInput.value.trim();
         fastaInput.setCustomValidity('');
@@ -970,6 +995,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setStructureValidationMode(isStructureAction) {
+        // Hidden algorithm inputs must not block GO or 3D form submissions.
         if (isStructureAction) {
             updateParameterVisibility(getSelectedAlgorithm());
             return;
@@ -993,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const STORAGE_KEY = 'protein_predictor_params_v2';
 
     function saveParametersToLocalStorage() {
+        // Persist tuning choices in this browser; no database write is made.
         const params = {
             algorithm: document.querySelector('input[name="algorithm"]:checked')?.value || 'sa',
             hc_iterations: document.querySelector('input[name="hc_iterations"]')?.value || '100000',
@@ -1118,6 +1145,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const PAD  = 24;   // canvas padding
 
     function parseEmbeddedData(rawData) {
+        // Django emits Python-style list/dict strings in data attributes.
+        // Convert their simple literals into JSON-compatible syntax.
         try {
             rawData = rawData
                 .replace(/'/g, '"')
@@ -1131,6 +1160,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderProteinSvg(svg, points) {
+        // Rebuild the complete SVG for either the final structure or one trace
+        // frame, keeping rendering work on the browser rather than the server.
         if (!points || points.length === 0) return;
         svg.innerHTML = '';
 

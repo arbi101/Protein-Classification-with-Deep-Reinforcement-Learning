@@ -3,6 +3,10 @@ agent_dqn.py
 ------------
 Implements the Deep Q-Network (DQN) agent for 2D HP protein folding.
 
+IMPORTANT: this is the older move-based DQN retained for historical
+experiments. Django currently imports the constructive model from
+agent_dqn_model.py instead.
+
 Instead of a lookup table (as in Tabular Q-Learning), a Convolutional
 Neural Network (CNN) is used to approximate Q-values. The CNN takes a
 200×200 spatial grid of the current protein conformation as input and
@@ -15,11 +19,15 @@ Key components:
   - run_dqn_inference : hybrid inference (DRL exploration + greedy refinement)
 """
 
+# PyTorch defines, optimizes and executes the historical neural networks.
 import torch
 import torch.nn as nn
 import torch.optim as optim
+# NumPy stores grid states and replay-buffer batches.
 import numpy as np
+# random controls exploration, replay sampling and structural move details.
 import random
+# deque provides an efficient fixed-capacity FIFO replay memory.
 from collections import deque
 
 
@@ -127,6 +135,7 @@ class ReplayBuffer:
         capacity : int  Maximum number of transitions to store
         """
         # deque with maxlen automatically discards the oldest entry when full
+        # Once full, appending automatically removes the oldest experience.
         self.buffer = deque(maxlen=capacity)
 
     def push(self, state, action, reward, next_state):
@@ -157,6 +166,7 @@ class ReplayBuffer:
         rewards     : np.ndarray  (batch,)
         next_states : np.ndarray  (batch, 1, 200, 200)
         """
+        # Uniform replay avoids training only on recent, correlated transitions.
         batch = random.sample(self.buffer, batch_size)  # random sample (no replacement)
         # Unzip the list of tuples into 4 separate tuples
         states, actions, rewards, next_states = zip(*batch)
@@ -273,6 +283,7 @@ class DQNAgent:
         buffer_size  : int    Replay buffer capacity (default: 10,000)
         """
         # Use CPU for compatibility (no GPU required)
+        # This historical model intentionally uses CPU for portable experiments.
         self.device = torch.device("cpu")
         self.num_actions = num_actions
         self.gamma = gamma  # discount factor γ
@@ -382,6 +393,7 @@ class DQNAgent:
         # ── Compute MSE loss and backpropagate ─────────────────────────────
         loss = nn.MSELoss()(q_values, target_q_values)
 
+        # PyTorch accumulates gradients by default, so clear old values first.
         self.optimizer.zero_grad()  # clear previous gradients
         loss.backward()             # compute gradients via backpropagation
         self.optimizer.step()       # update policy network weights
@@ -430,6 +442,8 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
     # Import the shared move functions from the Q-Learning module
     from test_ql import apply_move, calculate_energy, MOVE_TYPES
 
+    # In contrast with the final constructive DQN, this model starts from a
+    # complete chain and chooses operators that modify its conformation.
     n = len(hp_string)
     # Start from a straight-line conformation (same as training)
     initial_positions = [(i, 0) for i in range(n)]
@@ -437,6 +451,7 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
     best_energy = calculate_energy(initial_positions, hp_string)
 
     # If the weights file doesn't exist, fall back to the straight-line
+    # Missing historical weights degrade to a valid line instead of crashing.
     if not os.path.exists(weights_path):
         return best_positions, best_energy
 
@@ -459,6 +474,7 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
     current_positions = list(initial_positions)
     current_energy = best_energy
 
+    # Phase 1 samples policy-guided trajectories with deliberate exploration.
     for _ in range(explore_steps):
         # Encode current conformation as a 200×200 grid
         state_grid = positions_to_grid(current_positions, hp_string)
@@ -485,6 +501,7 @@ def run_dqn_inference(hp_string, weights_path, max_steps=600):
     refine_steps = max_steps - explore_steps  # remaining budget
     current_positions = list(best_positions)  # start from Phase 1 best
 
+    # Phase 2 greedily refines the strongest structure found in phase 1.
     for _ in range(refine_steps):
         found_better = False
         # Try every possible move type and pick the one that improves energy most

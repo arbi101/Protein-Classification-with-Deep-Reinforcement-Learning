@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Shared document metadata inherited by every child template. -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Child templates may override this title block. -->
     <title>{% block title %}Protein Analysis Platform{% endblock %}</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind supplies most utility classes used by predict.html. -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
+    <!-- Lucide replaces elements containing data-lucide with SVG icons. -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <!-- Enable Django's static tag and load project-specific CSS. -->
     {% load static %}
     <link rel="stylesheet" href="{% static 'go_predictor/css/styles.css' %}">
     <style>
@@ -18,13 +21,16 @@
     </style>
 </head>
 <body class="min-h-screen">
+    <!-- predict.html inserts the complete application interface here. -->
     {% block content %}{% endblock %}
 
+    <!-- ``year`` is added to the template context by predict_go(). -->
     <footer class="text-center mt-5 mb-3 text-slate-500 text-sm">
         &copy; {{ year }} Protein Classification Project
     </footer>
 
     <script>
+        // Convert all data-lucide placeholders rendered above into icons.
         lucide.createIcons();
     </script>
 </body>

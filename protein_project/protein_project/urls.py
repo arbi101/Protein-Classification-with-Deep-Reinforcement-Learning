@@ -20,6 +20,8 @@ from django.urls import path, include
 
 
 urlpatterns = [
+    # Expose Django's built-in administration interface under /admin/.
     path('admin/', admin.site.urls),
+    # Delegate all public routes, starting at /, to the go_predictor app.
     path('', include('go_predictor.urls')),
 ]

@@ -11,6 +11,8 @@ import os
 
 from django.core.asgi import get_asgi_application
 
+# Select this project's configuration before creating the server callable.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'protein_project.settings')
 
+# ASGI entry point for asynchronous-capable servers such as Uvicorn.
 application = get_asgi_application()

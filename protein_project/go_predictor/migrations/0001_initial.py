@@ -4,17 +4,24 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Create the first database table for the go_predictor app."""
 
+    # Mark this as the starting migration for the application.
     initial = True
 
+    # No earlier go_predictor migration must run before this one.
     dependencies = [
     ]
 
+    # Django applies these operations when ``manage.py migrate`` is run.
     operations = [
         migrations.CreateModel(
             name='ProteinSequence',
             fields=[
+                # Django automatically adds an incrementing primary key when
+                # the model does not declare one explicitly.
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                # The following columns mirror the fields declared in models.py.
                 ('name', models.CharField(max_length=200)),
                 ('fasta_sequence', models.TextField()),
                 ('predicted_go_terms', models.TextField(blank=True)),

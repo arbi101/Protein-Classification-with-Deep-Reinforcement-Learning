@@ -11,6 +11,8 @@ import os
 
 from django.core.wsgi import get_wsgi_application
 
+# Select this project's configuration before creating the server callable.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'protein_project.settings')
 
+# WSGI entry point used by the Gunicorn production server.
 application = get_wsgi_application()

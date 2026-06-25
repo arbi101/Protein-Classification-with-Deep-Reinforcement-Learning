@@ -13,45 +13,56 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+# Absolute directory containing manage.py. All local paths are derived from it
+# so the application does not depend on the current working directory.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# Prefer a secret supplied by the hosting environment. The fallback is only
+# intended to make local development easy and must not be used in production.
 SECRET_KEY = os.environ.get(
     'SECRET_KEY',
     'django-insecure-dev-only-9w_hq5rjys%8xn@g$45oli@wc2^$l$-&t$pr3iy52s-q3f-tje',
 )
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# DEBUG defaults to True locally and False on Render. An explicit DEBUG
+# environment variable takes precedence over both defaults.
 DEBUG = os.environ.get(
     'DEBUG',
     'False' if os.environ.get('RENDER') else 'True',
 ).lower() == 'true'
 
+# Convert the comma-separated environment variable into Django's host list.
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
     if host.strip()
 ]
 
+# Render automatically exposes the public service hostname through this value.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
+    # Accept requests addressed to the generated Render domain.
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
+# Trusted origins are required for secure cross-origin POST/CSRF validation.
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
     if origin.strip()
 ]
 if RENDER_EXTERNAL_HOSTNAME:
+    # Render serves the public application over HTTPS.
     CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 if os.environ.get('RENDER'):
+    # Render terminates TLS at its proxy. This header tells Django that the
+    # original client request used HTTPS.
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    # Enforce encrypted traffic and prevent sensitive cookies over plain HTTP.
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
@@ -60,15 +71,20 @@ if os.environ.get('RENDER'):
 # Application definition
 
 INSTALLED_APPS = [
+    # Built-in Django applications.
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # Project application containing the protein-analysis workflows.
     'go_predictor',
 ]
 
+# Middleware processes every request/response in the listed order. WhiteNoise
+# serves collected static assets, while the remaining entries provide security,
+# sessions, CSRF validation, authentication, messages and clickjacking defense.
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -80,15 +96,20 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+# Start URL resolution from protein_project/urls.py.
 ROOT_URLCONF = 'protein_project.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        # No extra project-level template directories are needed.
         'DIRS': [],
+        # Search each installed application's templates/ directory.
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                # Make request, authentication and message data automatically
+                # available to every rendered template.
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -97,6 +118,7 @@ TEMPLATES = [
     },
 ]
 
+# Production WSGI entry point used by Gunicorn.
 WSGI_APPLICATION = 'protein_project.wsgi.application'
 
 
@@ -105,6 +127,7 @@ WSGI_APPLICATION = 'protein_project.wsgi.application'
 
 DATABASES = {
     'default': {
+        # SQLite is a file-based database suitable for this demo application.
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
     }
@@ -115,6 +138,7 @@ DATABASES = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
+    # These validators apply to Django user passwords, not FASTA sequences.
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
@@ -133,10 +157,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
+# Default language for Django-generated text.
 LANGUAGE_CODE = 'en-us'
 
+# Store and interpret server-side dates using UTC.
 TIME_ZONE = 'UTC'
 
+# Enable translation support and timezone-aware datetime objects.
 USE_I18N = True
 
 USE_TZ = True
@@ -145,5 +172,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Public URL prefix for CSS, JavaScript and image files.
 STATIC_URL = 'static/'
+# Destination used by ``manage.py collectstatic`` during deployment.
 STATIC_ROOT = BASE_DIR / 'staticfiles'

@@ -3,6 +3,10 @@ test_ql.py
 ----------
 Implements Tabular Q-Learning for 2D HP protein structure prediction.
 
+This implementation supports offline experiments. The Django site's ``ql``
+form value now dispatches to constructive DQN inference for practical web
+response times instead of training this Q-table learner.
+
 Q-Learning is a model-free reinforcement learning algorithm. The agent
 maintains a table of Q-values Q(state, action) and updates them using
 the Bellman equation after each step. It uses an ε-greedy policy to
@@ -14,9 +18,13 @@ chains, the state space grows exponentially, making the Q-table too
 large to store in memory (the "curse of dimensionality").
 """
 
+# random implements epsilon-greedy exploration and stochastic move details.
 import random
+# math is retained for numerical helpers used by the experiment implementation.
 import math
+# time measures training duration in the executable comparison section.
 import time
+# defaultdict creates zero-initialized action values for unseen states.
 from collections import defaultdict
 
 
@@ -151,6 +159,7 @@ def apply_move(current_positions, move_type, hp_string):
     -------
     list of (int, int) if the move is valid, or None if invalid/no valid position
     """
+    # The sequence length fixes the number of lattice positions in every state.
     n = len(hp_string)
     new_positions = list(current_positions)  # work on a copy
 
@@ -313,11 +322,13 @@ def generate_2d_structure_ql(
     # ── Q-table initialization ────────────────────────────────────────────
     # defaultdict automatically creates a new entry {action: 0.0} for any
     # state key that hasn't been seen before (avoids KeyError exceptions)
+    # Each state maps all four move names to their expected returns.
     q_table = defaultdict(lambda: {a: 0.0 for a in actions})
 
     # ── Epsilon decay schedule ────────────────────────────────────────────
     # ε decays LINEARLY from epsilon_start to epsilon_end over the first
     # half of training. After that, ε stays at epsilon_end.
+    # Exploration decay is based on transitions, not merely episode count.
     total_steps = episodes * max_steps_per_episode
     if epsilon_decay is None:
         epsilon_decay = total_steps // 2   # decay over the first half of training
@@ -330,6 +341,7 @@ def generate_2d_structure_ql(
     best_energy    = calculate_energy(best_positions, hp_string)
 
     # ── Training loop ─────────────────────────────────────────────────────
+    # Episodes provide repeated attempts from the same initial condition.
     for episode in range(episodes):
         # Reset to straight-line conformation at the START of every episode.
         # The agent must re-learn to fold from scratch each time, but the
@@ -338,6 +350,7 @@ def generate_2d_structure_ql(
         current_energy    = calculate_energy(current_positions, hp_string)
         current_state     = positions_to_state(current_positions)
 
+        # Every inner iteration is one state/action/reward transition.
         for _ in range(max_steps_per_episode):
             # ── ε-greedy action selection ─────────────────────────────────
             # Compute current ε: linearly decays from epsilon_start to epsilon_end
@@ -375,6 +388,7 @@ def generate_2d_structure_ql(
             # TD target = R + γ · max_a' Q(s', a')
             # TD error  = TD target - Q(s, a)
             # New Q     = old Q + α · TD error
+            # Bootstrap from the estimate of the strongest next-state action.
             best_next_q = max(q_table[next_state].values())  # greedy future value
             old_q       = q_table[current_state][action]
             q_table[current_state][action] = (
@@ -393,6 +407,8 @@ def generate_2d_structure_ql(
                     best_energy    = current_energy
                     best_positions = list(current_positions)
 
+    # Return the learned table as well as the best training conformation so it
+    # can be evaluated separately by exploit_q_table().
     return best_positions, best_energy, q_table
 
 
@@ -426,6 +442,7 @@ def exploit_q_table(hp_string, q_table, steps=500):
     best_positions    = list(current_positions)
     best_energy       = current_energy
 
+    # No Bellman update occurs here: exploitation reads the learned table only.
     for _ in range(steps):
         # Encode current conformation as a state key
         state  = positions_to_state(current_positions)
@@ -453,6 +470,7 @@ def exploit_q_table(hp_string, q_table, steps=500):
 # ─────────────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
+    # Everything below is an offline scalability demonstration for short chains.
     # Small proteins well-suited for Tabular Q-Learning
     # (larger sequences cause the Q-table to grow too large in memory)
     p1 = "MKVILA"                     #  6 AA
